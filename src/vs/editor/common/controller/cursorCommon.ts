@@ -61,6 +61,7 @@ export class CursorConfiguration {
 	public readonly readOnly: boolean;
 	public readonly tabSize: number;
 	public readonly indentSize: number;
+	//public readonly indentEmptyLines: boolean; <SPH>
 	public readonly insertSpaces: boolean;
 	public readonly stickyTabStops: boolean;
 	public readonly pageSize: number;
@@ -113,6 +114,7 @@ export class CursorConfiguration {
 		this.readOnly = options.get(EditorOption.readOnly);
 		this.tabSize = modelOptions.tabSize;
 		this.indentSize = modelOptions.indentSize;
+		//this.indentEmptyLines = modelOptions.indentEmptyLines; <SPH>
 		this.insertSpaces = modelOptions.insertSpaces;
 		this.stickyTabStops = options.get(EditorOption.stickyTabStops);
 		this.lineHeight = options.get(EditorOption.lineHeight);

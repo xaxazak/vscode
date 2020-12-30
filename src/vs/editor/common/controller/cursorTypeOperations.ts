@@ -34,9 +34,10 @@ export class TypeOperations {
 				isUnshift: false,
 				tabSize: config.tabSize,
 				indentSize: config.indentSize,
+				//indentEmptyLines: config.indentEmptyLines, <SPH>
 				insertSpaces: config.insertSpaces,
 				useTabStops: config.useTabStops,
-				autoIndent: config.autoIndent
+				autoIndent: config.autoIndent,
 			});
 		}
 		return commands;
@@ -49,9 +50,10 @@ export class TypeOperations {
 				isUnshift: true,
 				tabSize: config.tabSize,
 				indentSize: config.indentSize,
+				//indentEmptyLines: config.indentEmptyLines, <SPH>
 				insertSpaces: config.insertSpaces,
 				useTabStops: config.useTabStops,
-				autoIndent: config.autoIndent
+				autoIndent: config.autoIndent,
 			});
 		}
 		return commands;

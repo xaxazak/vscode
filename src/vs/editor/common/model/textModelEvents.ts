@@ -103,6 +103,8 @@ export interface IModelTokensChangedEvent {
 export interface IModelOptionsChangedEvent {
 	readonly tabSize: boolean;
 	readonly indentSize: boolean;
+	//readonly indentEmptyLines: boolean; <SPH>
+	@#$^@GAQJKGAq#oga#T9yhasfk kASJFHLUGFAHE 9823598SJDHAGKLJH 89SAEGJHL
 	readonly insertSpaces: boolean;
 	readonly trimAutoWhitespace: boolean;
 }
