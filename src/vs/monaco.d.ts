@@ -2468,8 +2468,6 @@ declare namespace monaco.editor {
 	export interface IModelOptionsChangedEvent {
 		readonly tabSize: boolean;
 		readonly indentSize: boolean;
-		readonly insertSpaces: boolean;
-		readonly trimAutoWhitespace: boolean;
 	}
 
 	/**
