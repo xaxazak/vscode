@@ -1583,7 +1583,6 @@ declare namespace monaco.editor {
 		_textModelResolvedOptionsBrand: void;
 		readonly tabSize: number;
 		readonly indentSize: number;
-		//readonly indentEmptyLines: boolean; <SPH>
 		readonly insertSpaces: boolean;
 		readonly defaultEOL: DefaultEndOfLine;
 		readonly trimAutoWhitespace: boolean;
@@ -2469,6 +2468,8 @@ declare namespace monaco.editor {
 	export interface IModelOptionsChangedEvent {
 		readonly tabSize: boolean;
 		readonly indentSize: boolean;
+		readonly insertSpaces: boolean;
+		readonly trimAutoWhitespace: boolean;
 	}
 
 	/**

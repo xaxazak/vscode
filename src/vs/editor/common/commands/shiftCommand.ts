@@ -125,6 +125,8 @@ export class ShiftCommand implements ICommand {
 					continue;
 				}
 
+
+
 				if (!shouldIndentEmptyLines && !this._opts.isUnshift && lineText.length === 0) {
 					// do not indent empty lines => nothing to do
 					continue;

@@ -399,7 +399,7 @@ export class TextModelResolvedOptions {
 
 	readonly tabSize: number;
 	readonly indentSize: number;
-	readonly indentEmptyLines: boolean;
+	//readonly indentEmptyLines: boolean; <SPH>
 	readonly insertSpaces: boolean;
 	readonly defaultEOL: DefaultEndOfLine;
 	readonly trimAutoWhitespace: boolean;
@@ -410,14 +410,14 @@ export class TextModelResolvedOptions {
 	constructor(src: {
 		tabSize: number;
 		indentSize: number;
-		indentEmptyLines: boolean;
+		//indentEmptyLines: boolean; <SPH>
 		insertSpaces: boolean;
 		defaultEOL: DefaultEndOfLine;
 		trimAutoWhitespace: boolean;
 	}) {
 		this.tabSize = Math.max(1, src.tabSize | 0);
 		this.indentSize = src.tabSize | 0;
-		this.indentEmptyLines = true; // Boolean(src.indentEmptyLines);
+		//this.indentEmptyLines = true; // Boolean(src.indentEmptyLines); <SPH>
 		this.insertSpaces = Boolean(src.insertSpaces);
 		this.defaultEOL = src.defaultEOL | 0;
 		this.trimAutoWhitespace = Boolean(src.trimAutoWhitespace);
@@ -430,7 +430,7 @@ export class TextModelResolvedOptions {
 		return (
 			this.tabSize === other.tabSize
 			&& this.indentSize === other.indentSize
-			&& this.indentEmptyLines === other.indentEmptyLines
+			//&& this.indentEmptyLines === other.indentEmptyLines <SPH>
 			&& this.insertSpaces === other.insertSpaces
 			&& this.defaultEOL === other.defaultEOL
 			&& this.trimAutoWhitespace === other.trimAutoWhitespace
@@ -444,7 +444,7 @@ export class TextModelResolvedOptions {
 		return {
 			tabSize: this.tabSize !== newOpts.tabSize,
 			indentSize: this.indentSize !== newOpts.indentSize,
-			indentEmptyLines: this.indentEmptyLines !== newOpts.indentEmptyLines,
+			//indentEmptyLines: this.indentEmptyLines !== newOpts.indentEmptyLines, <SPH>
 			insertSpaces: this.insertSpaces !== newOpts.insertSpaces,
 			trimAutoWhitespace: this.trimAutoWhitespace !== newOpts.trimAutoWhitespace,
 		};
