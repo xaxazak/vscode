@@ -6,7 +6,7 @@ import { Disposable, DisposableStore, IDisposable, toDisposable } from 'vs/base/
 import { IActiveCodeEditor, ICodeEditor, IOverlayWidget, IOverlayWidgetPosition } from 'vs/editor/browser/editorBrowser';
 import * as dom from 'vs/base/browser/dom';
 import { EditorLayoutInfo, EditorOption, RenderLineNumbersType } from 'vs/editor/common/config/editorOptions';
-import { createStringBuilder } from 'vs/editor/common/core/stringBuilder';
+import { StringBuilder } from 'vs/editor/common/core/stringBuilder';
 import { RenderLineInput, renderViewLine } from 'vs/editor/common/viewLayout/viewLineRenderer';
 import { LineDecoration } from 'vs/editor/common/viewLayout/lineDecorations';
 import { Position } from 'vs/editor/common/core/position';
@@ -160,7 +160,6 @@ export class StickyScrollWidget extends Disposable implements IOverlayWidget {
 		return linkGestureStore;
 	}
 
-
 	public get lineNumbers(): number[] {
 		return this._lineNumbers;
 	}
@@ -211,7 +210,7 @@ export class StickyScrollWidget extends Disposable implements IOverlayWidget {
 				lineRenderingData.tabSize, lineRenderingData.startVisibleColumn,
 				1, 1, 1, 500, 'none', true, true, null);
 
-		const sb = createStringBuilder(2000);
+		const sb = new StringBuilder(2000);
 		renderViewLine(renderLineInput, sb);
 
 		let newLine;
@@ -276,7 +275,7 @@ export class StickyScrollWidget extends Disposable implements IOverlayWidget {
 				const mouseOverEvent = new StandardMouseEvent(e);
 				const text = mouseOverEvent.target.innerText;
 				this._hoverOnLine = line;
-				// TODO: workaround to find the column index, perhaps need more solid solution
+				// TODO: workaround to find the column index, perhaps need a more solid solution
 				this._hoverOnColumn = this._editor.getModel().getLineContent(line).indexOf(text) + 1 || -1;
 			}
 		}));
@@ -297,8 +296,9 @@ export class StickyScrollWidget extends Disposable implements IOverlayWidget {
 		const minimapSide = this._editor.getOption(EditorOption.minimap).side;
 		if (minimapSide === 'left') {
 			this._rootDomNode.style.marginLeft = this._editor.getLayoutInfo().minimap.minimapCanvasOuterWidth + 'px';
-		} else if (minimapSide === 'right') {
-			this._rootDomNode.style.marginLeft = '0px';
+		}
+		else if (minimapSide === 'right') {
+			this._rootDomNode.style.marginLeft = '1px';
 		}
 		this._rootDomNode.style.zIndex = '11';
 	}
