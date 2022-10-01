@@ -38,6 +38,7 @@ export class TypeOperations {
 				tabSize: config.tabSize,
 				indentSize: config.indentSize,
 				insertSpaces: config.insertSpaces,
+				alwaysIndentEmptyLines: config.alwaysIndentEmptyLines,
 				useTabStops: config.useTabStops,
 				autoIndent: config.autoIndent
 			}, config.languageConfigurationService);
@@ -53,6 +54,7 @@ export class TypeOperations {
 				tabSize: config.tabSize,
 				indentSize: config.indentSize,
 				insertSpaces: config.insertSpaces,
+				alwaysIndentEmptyLines: config.alwaysIndentEmptyLines,
 				useTabStops: config.useTabStops,
 				autoIndent: config.autoIndent
 			}, config.languageConfigurationService);
@@ -253,6 +255,7 @@ export class TypeOperations {
 					tabSize: config.tabSize,
 					indentSize: config.indentSize,
 					insertSpaces: config.insertSpaces,
+					alwaysIndentEmptyLines: config.alwaysIndentEmptyLines,
 					useTabStops: config.useTabStops,
 					autoIndent: config.autoIndent
 				}, config.languageConfigurationService);

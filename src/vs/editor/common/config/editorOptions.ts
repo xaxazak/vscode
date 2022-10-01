@@ -418,6 +418,11 @@ export interface IEditorOptions {
 	 * Options for auto closing brackets.
 	 * Defaults to language defined behavior.
 	 */
+	alwaysIndentEmptyLines?: boolean;
+	/**
+	 * Controls whether the editor should indent empty lines when indenting multiple lines.
+	 * Defaults to false.
+	 */
 	autoClosingBrackets?: EditorAutoClosingStrategy;
 	/**
 	 * Options for auto closing quotes.
@@ -4547,6 +4552,7 @@ export const enum EditorOption {
 	acceptSuggestionOnEnter,
 	accessibilitySupport,
 	accessibilityPageSize,
+	alwaysIndentEmptyLines,
 	ariaLabel,
 	autoClosingBrackets,
 	autoClosingDelete,
@@ -4704,6 +4710,10 @@ export const EditorOptions = {
 		{
 			description: nls.localize('accessibilityPageSize', "Controls the number of lines in the editor that can be read out by a screen reader at once. When we detect a screen reader we automatically set the default to be 500. Warning: this has a performance implication for numbers larger than the default.")
 		})),
+	alwaysIndentEmptyLines: register(new EditorBooleanOption(
+		EditorOption.alwaysIndentEmptyLines, 'alwaysIndentEmptyLines', false,
+		{ description: nls.localize('alwaysIndentEmptyLines', "Controls whether multi-line indents affect empty lines.") }
+	)),
 	ariaLabel: register(new EditorStringOption(
 		EditorOption.ariaLabel, 'ariaLabel', nls.localize('editorViewAccessibleLabel', "Editor content")
 	)),
