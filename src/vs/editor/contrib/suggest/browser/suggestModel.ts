@@ -452,6 +452,10 @@ export class SuggestModel implements IDisposable {
 		const auto = context.auto;
 		const ctx = new LineContext(model, this._editor.getPosition(), auto, context.shy, context.noSelect);
 
+		if (ctx.leadingWord.word.length < this._editor.getOption(EditorOption.suggest).minimumProvokingCharacters) {
+			return;
+		}
+
 		// Cancel previous requests, change state & update UI
 		this.cancel(retrigger);
 		this._state = auto ? State.Auto : State.Manual;

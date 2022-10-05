@@ -4028,6 +4028,10 @@ export interface ISuggestOptions {
 	 * Show snippet-suggestions.
 	 */
 	showSnippets?: boolean;
+	/**
+	 *  Minimum characters typed before generating suggestions.
+	 */
+	minimumProvokingCharacters?: number;
 }
 
 /**
@@ -4078,6 +4082,7 @@ class EditorSuggest extends BaseEditorOption<EditorOption.suggest, ISuggestOptio
 			showSnippets: true,
 			showUsers: true,
 			showIssues: true,
+			minimumProvokingCharacters: 0,
 		};
 		super(
 			EditorOption.suggest, 'suggest', defaults,
@@ -4289,6 +4294,11 @@ class EditorSuggest extends BaseEditorOption<EditorOption.suggest, ISuggestOptio
 					type: 'boolean',
 					default: true,
 					markdownDescription: nls.localize('editor.suggest.showIssues', "When enabled IntelliSense shows `issues`-suggestions.")
+				},
+				'editor.suggest.minimumProvokingCharacters': {
+					type: 'number',
+					default: 0,
+					markdownDescription: nls.localize('editor.suggest.minimumProvokingCharacters', "Minimum number of characters typed before displaying suggestions.")
 				}
 			}
 		);
@@ -4339,6 +4349,7 @@ class EditorSuggest extends BaseEditorOption<EditorOption.suggest, ISuggestOptio
 			showSnippets: boolean(input.showSnippets, this.defaultValue.showSnippets),
 			showUsers: boolean(input.showUsers, this.defaultValue.showUsers),
 			showIssues: boolean(input.showIssues, this.defaultValue.showIssues),
+			minimumProvokingCharacters: EditorIntOption.clampedInt(input.minimumProvokingCharacters, this.defaultValue.minimumProvokingCharacters, 0, 1000),
 		};
 	}
 }
