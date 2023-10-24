@@ -19,6 +19,7 @@ export interface IShiftCommandOpts {
 	tabSize: number;
 	indentSize: number;
 	insertSpaces: boolean;
+	alwaysIndentEmptyLines: boolean;
 	useTabStops: boolean;
 	autoIndent: EditorAutoIndentStrategy;
 }
@@ -109,7 +110,7 @@ export class ShiftCommand implements ICommand {
 		}
 
 		const { tabSize, indentSize, insertSpaces } = this._opts;
-		const shouldIndentEmptyLines = (startLine === endLine);
+		const shouldIndentEmptyLines = (startLine === endLine) || this._opts.alwaysIndentEmptyLines;
 
 		if (this._opts.useTabStops) {
 			// if indenting or outdenting on a whitespace only line

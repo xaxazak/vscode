@@ -59,6 +59,7 @@ function testShiftCommand(lines: string[], languageId: string | null, useTabStop
 		tabSize: 4,
 		indentSize: 4,
 		insertSpaces: false,
+		alwaysIndentEmptyLines: false,
 		useTabStops: useTabStops,
 		autoIndent: EditorAutoIndentStrategy.Full,
 	}, accessor.get(ILanguageConfigurationService)), expectedLines, expectedSelection, undefined, prepare);
@@ -70,6 +71,7 @@ function testUnshiftCommand(lines: string[], languageId: string | null, useTabSt
 		tabSize: 4,
 		indentSize: 4,
 		insertSpaces: false,
+		alwaysIndentEmptyLines: false,
 		useTabStops: useTabStops,
 		autoIndent: EditorAutoIndentStrategy.Full,
 	}, accessor.get(ILanguageConfigurationService)), expectedLines, expectedSelection, undefined, prepare);
@@ -684,6 +686,7 @@ suite('Editor Commands - ShiftCommand', () => {
 				tabSize: 4,
 				indentSize: 4,
 				insertSpaces: true,
+				alwaysIndentEmptyLines: false,
 				useTabStops: false,
 				autoIndent: EditorAutoIndentStrategy.Full,
 			}, accessor.get(ILanguageConfigurationService)),
@@ -730,6 +733,7 @@ suite('Editor Commands - ShiftCommand', () => {
 				tabSize: 4,
 				indentSize: 4,
 				insertSpaces: true,
+				alwaysIndentEmptyLines: false,
 				useTabStops: false,
 				autoIndent: EditorAutoIndentStrategy.Full,
 			}, accessor.get(ILanguageConfigurationService)),
@@ -776,6 +780,7 @@ suite('Editor Commands - ShiftCommand', () => {
 				tabSize: 4,
 				indentSize: 4,
 				insertSpaces: false,
+				alwaysIndentEmptyLines: false,
 				useTabStops: false,
 				autoIndent: EditorAutoIndentStrategy.Full,
 			}, accessor.get(ILanguageConfigurationService)),
@@ -822,6 +827,7 @@ suite('Editor Commands - ShiftCommand', () => {
 				tabSize: 4,
 				indentSize: 4,
 				insertSpaces: true,
+				alwaysIndentEmptyLines: false,
 				useTabStops: false,
 				autoIndent: EditorAutoIndentStrategy.Full,
 			}, accessor.get(ILanguageConfigurationService)),
@@ -857,6 +863,7 @@ suite('Editor Commands - ShiftCommand', () => {
 				tabSize: 4,
 				indentSize: 4,
 				insertSpaces: false,
+				alwaysIndentEmptyLines: false,
 				useTabStops: true,
 				autoIndent: EditorAutoIndentStrategy.Full,
 			}, accessor.get(ILanguageConfigurationService)),
@@ -865,6 +872,72 @@ suite('Editor Commands - ShiftCommand', () => {
 				'another line'
 			],
 			new Selection(1, 1, 1, 14)
+		);
+	});
+
+	test('always indent empty lines (enabled)', () => {
+		testCommand(
+			[
+				'',
+				'line two',
+				'',
+				'line four',
+				'',
+				''
+			],
+			null,
+			new Selection(1, 1, 6, 1),
+			(accessor, sel) => new ShiftCommand(sel, {
+				isUnshift: false,
+				tabSize: 4,
+				indentSize: 4,
+				insertSpaces: false,
+				alwaysIndentEmptyLines: true,
+				useTabStops: true,
+				autoIndent: EditorAutoIndentStrategy.Full,
+			}, new TestLanguageConfigurationService()),
+			[
+				'\t',
+				'\tline two',
+				'\t',
+				'\tline four',
+				'\t',
+				''
+			],
+			new Selection(1, 1, 6, 1)
+		);
+	});
+
+	test('always indent empty lines (disabled)', () => {
+		testCommand(
+			[
+				'',
+				'line two',
+				'',
+				'line four',
+				'',
+				''
+			],
+			null,
+			new Selection(1, 1, 6, 1),
+			(accessor, sel) => new ShiftCommand(sel, {
+				isUnshift: false,
+				tabSize: 4,
+				indentSize: 4,
+				insertSpaces: false,
+				alwaysIndentEmptyLines: false,
+				useTabStops: true,
+				autoIndent: EditorAutoIndentStrategy.Full,
+			}, new TestLanguageConfigurationService()),
+			[
+				'',
+				'\tline two',
+				'',
+				'\tline four',
+				'',
+				''
+			],
+			new Selection(1, 1, 6, 1)
 		);
 	});
 
@@ -969,6 +1042,7 @@ suite('Editor Commands - ShiftCommand', () => {
 					tabSize: tabSize,
 					indentSize: indentSize,
 					insertSpaces: insertSpaces,
+					alwaysIndentEmptyLines: false,
 					useTabStops: true,
 					autoIndent: EditorAutoIndentStrategy.Full,
 				}, testLanguageConfigurationService);
@@ -986,6 +1060,7 @@ suite('Editor Commands - ShiftCommand', () => {
 					tabSize: tabSize,
 					indentSize: indentSize,
 					insertSpaces: insertSpaces,
+					alwaysIndentEmptyLines: false,
 					useTabStops: true,
 					autoIndent: EditorAutoIndentStrategy.Full,
 				}, testLanguageConfigurationService);
