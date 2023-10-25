@@ -230,6 +230,10 @@ export class InlineChatController implements IEditorContribution {
 		}
 	}
 
+	joinCurrentRun(): Promise<void> | undefined {
+		return this._currentRun;
+	}
+
 	// ---- state machine
 
 	private _showWidget(initialRender: boolean = false, position?: IPosition) {
@@ -405,14 +409,14 @@ export class InlineChatController implements IEditorContribution {
 		}
 	}
 
-	private _placeholder: string | undefined = undefined;
+	private _forcedPlaceholder: string | undefined = undefined;
 	setPlaceholder(text: string): void {
-		this._placeholder = text;
+		this._forcedPlaceholder = text;
 		this._updatePlaceholder();
 	}
 
 	resetPlaceholder(): void {
-		this._placeholder = undefined;
+		this._forcedPlaceholder = undefined;
 		this._updatePlaceholder();
 	}
 
@@ -421,8 +425,8 @@ export class InlineChatController implements IEditorContribution {
 	}
 
 	private _getPlaceholderText(): string {
-		let result = this._placeholder ?? this._activeSession?.session.placeholder ?? localize('default.placeholder', "Ask a question");
-		if (InlineChatController._promptHistory.length > 0) {
+		let result = this._forcedPlaceholder ?? this._activeSession?.session.placeholder ?? localize('default.placeholder', "Ask a question");
+		if (typeof this._forcedPlaceholder === 'undefined' && InlineChatController._promptHistory.length > 0) {
 			const kb1 = this._keybindingService.lookupKeybinding('inlineChat.previousFromHistory')?.getLabel();
 			const kb2 = this._keybindingService.lookupKeybinding('inlineChat.nextFromHistory')?.getLabel();
 
@@ -490,11 +494,11 @@ export class InlineChatController implements IEditorContribution {
 			return State.MAKE_REQUEST;
 		}
 
-		if (!this._zone.value.widget.value) {
+		if (!this.getInput()) {
 			return State.WAIT_FOR_INPUT;
 		}
 
-		const input = this._zone.value.widget.value;
+		const input = this.getInput();
 
 		if (!InlineChatController._promptHistory.includes(input)) {
 			InlineChatController._promptHistory.unshift(input);
@@ -549,6 +553,7 @@ export class InlineChatController implements IEditorContribution {
 		const markdownContents = new MarkdownString('', { supportThemeIcons: true, supportHtml: true, isTrusted: false });
 
 		const progressiveEditsAvgDuration = new MovingAverage();
+		const progressiveEditsCts = new CancellationTokenSource(requestCts.token);
 		const progressiveEditsClock = StopWatch.create();
 		const progressiveEditsQueue = new Queue();
 		let round = 0;
@@ -565,15 +570,16 @@ export class InlineChatController implements IEditorContribution {
 				this._zone.value.widget.updateInfo(data.message);
 			}
 			if (data.slashCommand) {
-				const valueNow = this._zone.value.widget.value;
+				const valueNow = this.getInput();
 				if (!valueNow.startsWith('/')) {
 					this._zone.value.widget.updateSlashCommandUsed(data.slashCommand);
 				}
 			}
-			if (data.edits) {
+			if (data.edits?.length) {
 				if (!request.live) {
 					throw new Error('Progress in NOT supported in non-live mode');
 				}
+				console.log(JSON.stringify(data.edits, undefined, 2));
 				progressEdits.push(data.edits);
 				progressiveEditsAvgDuration.update(progressiveEditsClock.elapsed());
 				progressiveEditsClock.reset();
@@ -582,7 +588,10 @@ export class InlineChatController implements IEditorContribution {
 					// making changes goes into a queue because otherwise the async-progress time will
 					// influence the time it takes to receive the changes and progressive typing will
 					// become infinitely fast
-					await this._makeChanges(data.edits!, { duration: progressiveEditsAvgDuration.value, round: round++, token: requestCts.token });
+					await this._makeChanges(data.edits!, data.editsShouldBeInstant
+						? undefined
+						: { duration: progressiveEditsAvgDuration.value, round: round++, token: progressiveEditsCts.token }
+					);
 					this._showWidget(false);
 				});
 			}
@@ -631,13 +640,14 @@ export class InlineChatController implements IEditorContribution {
 			this._log('request took', requestClock.elapsed(), this._activeSession.provider.debugName);
 		}
 
-		if (request.live && !(response instanceof EditResponse)) {
-			this._strategy?.undoChanges(modelAltVersionIdNow);
-		}
-
+		progressiveEditsCts.dispose(true);
 		requestCts.dispose();
 		msgListener.dispose();
 		typeListener.dispose();
+
+		if (request.live && !(response instanceof EditResponse)) {
+			this._strategy?.undoChanges(modelAltVersionIdNow);
+		}
 
 		this._activeSession.addExchange(new SessionExchange(this._activeSession.lastInput, response));
 
@@ -845,9 +855,15 @@ export class InlineChatController implements IEditorContribution {
 		this._messages.fire(Message.ACCEPT_INPUT);
 	}
 
-	updateInput(text: string): void {
+	updateInput(text: string, selectAll = true): void {
 		this._zone.value.widget.value = text;
-		this._zone.value.widget.selectAll();
+		if (selectAll) {
+			this._zone.value.widget.selectAll();
+		}
+	}
+
+	getInput(): string {
+		return this._zone.value.widget.value;
 	}
 
 	regenerate(): void {
