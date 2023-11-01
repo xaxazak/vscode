@@ -5998,6 +5998,7 @@ declare namespace monaco.editor {
 		updateOptions(newOptions: IDiffEditorOptions): void;
 		accessibleDiffViewerNext(): void;
 		accessibleDiffViewerPrev(): void;
+		handleInitialized(): void;
 	}
 
 	export class FontInfo extends BareFontInfo {
