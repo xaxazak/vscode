@@ -3,12 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { isStandalone } from 'vs/base/browser/browser';
 import { alert } from 'vs/base/browser/ui/aria/aria';
 import { createCancelablePromise, raceCancellation } from 'vs/base/common/async';
 import { CancellationToken } from 'vs/base/common/cancellation';
 import { KeyChord, KeyCode, KeyMod } from 'vs/base/common/keyCodes';
-import { isWeb } from 'vs/base/common/platform';
 import { assertType } from 'vs/base/common/types';
 import { URI } from 'vs/base/common/uri';
 import { CodeEditorStateFlag, EditorStateCancellationTokenSource } from 'vs/editor/contrib/editorState/browser/editorState';
@@ -29,7 +27,7 @@ import { ISymbolNavigationService } from 'vs/editor/contrib/gotoSymbol/browser/s
 import { MessageController } from 'vs/editor/contrib/message/browser/messageController';
 import { PeekContext } from 'vs/editor/contrib/peekView/browser/peekView';
 import * as nls from 'vs/nls';
-import { IAction2Options, ISubmenuItem, MenuId, MenuRegistry, registerAction2 } from 'vs/platform/actions/common/actions';
+import { IAction2F1RequiredOptions, IAction2Options, ISubmenuItem, MenuId, MenuRegistry, registerAction2 } from 'vs/platform/actions/common/actions';
 import { CommandsRegistry, ICommandService } from 'vs/platform/commands/common/commands';
 import { ContextKeyExpr } from 'vs/platform/contextkey/common/contextkey';
 import { TextEditorSelectionRevealType, TextEditorSelectionSource } from 'vs/platform/editor/common/editor';
@@ -41,7 +39,7 @@ import { getDeclarationsAtPosition, getDefinitionsAtPosition, getImplementations
 import { IWordAtPosition } from 'vs/editor/common/core/wordHelper';
 import { ILanguageFeaturesService } from 'vs/editor/common/services/languageFeatures';
 import { Iterable } from 'vs/base/common/iterator';
-
+import { IsWebContext } from 'vs/platform/contextkey/common/contextkeys';
 
 MenuRegistry.appendMenuItem(MenuId.EditorContext, <ISubmenuItem>{
 	submenu: MenuId.EditorContextPeek,
@@ -79,24 +77,27 @@ export abstract class SymbolNavigationAction extends EditorAction2 {
 	private static _allSymbolNavigationCommands = new Map<string, SymbolNavigationAction>();
 	private static _activeAlternativeCommands = new Set<string>();
 
-	readonly configuration: SymbolNavigationActionConfig;
+	static all(): IterableIterator<SymbolNavigationAction> {
+		return SymbolNavigationAction._allSymbolNavigationCommands.values();
+	}
 
-	private static aaa(opts: IAction2Options): IAction2Options {
+	private static _patchConfig(opts: IAction2Options & IAction2F1RequiredOptions): IAction2Options {
 		const result = { ...opts, f1: true };
 		// patch context menu when clause
 		if (result.menu) {
-			const iterable = Array.isArray(result.menu) ? result.menu : Iterable.single(result.menu);
-			for (const item of iterable) {
+			for (const item of Iterable.wrap(result.menu)) {
 				if (item.id === MenuId.EditorContext || item.id === MenuId.EditorContextPeek) {
 					item.when = ContextKeyExpr.and(opts.precondition, item.when);
 				}
 			}
 		}
-		return result;
+		return <typeof opts>result;
 	}
 
-	constructor(configuration: SymbolNavigationActionConfig, opts: IAction2Options) {
-		super(SymbolNavigationAction.aaa(opts));
+	readonly configuration: SymbolNavigationActionConfig;
+
+	constructor(configuration: SymbolNavigationActionConfig, opts: IAction2Options & IAction2F1RequiredOptions) {
+		super(SymbolNavigationAction._patchConfig(opts));
 		this.configuration = configuration;
 		SymbolNavigationAction._allSymbolNavigationCommands.set(opts.id, this);
 	}
@@ -270,10 +271,6 @@ export class DefinitionAction extends SymbolNavigationAction {
 	}
 }
 
-const goToDefinitionKb = isWeb && !isStandalone()
-	? KeyMod.CtrlCmd | KeyCode.F12
-	: KeyCode.F12;
-
 registerAction2(class GoToDefinitionAction extends DefinitionAction {
 
 	static readonly id = 'editor.action.revealDefinition';
@@ -293,17 +290,22 @@ registerAction2(class GoToDefinitionAction extends DefinitionAction {
 			precondition: ContextKeyExpr.and(
 				EditorContextKeys.hasDefinitionProvider,
 				EditorContextKeys.isInWalkThroughSnippet.toNegated()),
-			keybinding: {
+			keybinding: [{
 				when: EditorContextKeys.editorTextFocus,
-				primary: goToDefinitionKb,
+				primary: KeyCode.F12,
 				weight: KeybindingWeight.EditorContrib
-			},
+			}, {
+				when: ContextKeyExpr.and(EditorContextKeys.editorTextFocus, IsWebContext),
+				primary: KeyMod.CtrlCmd | KeyCode.F12,
+				weight: KeybindingWeight.EditorContrib
+			}],
 			menu: [{
 				id: MenuId.EditorContext,
 				group: 'navigation',
 				order: 1.1
 			}, {
 				id: MenuId.MenubarGoMenu,
+				precondition: null,
 				group: '4_symbol_nav',
 				order: 2,
 			}]
@@ -330,11 +332,15 @@ registerAction2(class OpenDefinitionToSideAction extends DefinitionAction {
 			precondition: ContextKeyExpr.and(
 				EditorContextKeys.hasDefinitionProvider,
 				EditorContextKeys.isInWalkThroughSnippet.toNegated()),
-			keybinding: {
+			keybinding: [{
 				when: EditorContextKeys.editorTextFocus,
-				primary: KeyChord(KeyMod.CtrlCmd | KeyCode.KeyK, goToDefinitionKb),
+				primary: KeyChord(KeyMod.CtrlCmd | KeyCode.KeyK, KeyCode.F12),
 				weight: KeybindingWeight.EditorContrib
-			}
+			}, {
+				when: ContextKeyExpr.and(EditorContextKeys.editorTextFocus, IsWebContext),
+				primary: KeyChord(KeyMod.CtrlCmd | KeyCode.KeyK, KeyMod.CtrlCmd | KeyCode.F12),
+				weight: KeybindingWeight.EditorContrib
+			}]
 		});
 		CommandsRegistry.registerCommandAlias('editor.action.openDeclarationToTheSide', OpenDefinitionToSideAction.id);
 	}
@@ -427,6 +433,7 @@ registerAction2(class GoToDeclarationAction extends DeclarationAction {
 				order: 1.3
 			}, {
 				id: MenuId.MenubarGoMenu,
+				precondition: null,
 				group: '4_symbol_nav',
 				order: 3,
 			}],
@@ -521,6 +528,7 @@ registerAction2(class GoToTypeDefinitionAction extends TypeDefinitionAction {
 				order: 1.4
 			}, {
 				id: MenuId.MenubarGoMenu,
+				precondition: null,
 				group: '4_symbol_nav',
 				order: 3,
 			}]
@@ -612,6 +620,7 @@ registerAction2(class GoToImplementationAction extends ImplementationAction {
 				order: 1.45
 			}, {
 				id: MenuId.MenubarGoMenu,
+				precondition: null,
 				group: '4_symbol_nav',
 				order: 4,
 			}]
@@ -704,6 +713,7 @@ registerAction2(class GoToReferencesAction extends ReferencesAction {
 				order: 1.45
 			}, {
 				id: MenuId.MenubarGoMenu,
+				precondition: null,
 				group: '4_symbol_nav',
 				order: 5,
 			}]
@@ -788,7 +798,7 @@ class GenericGoToLocationAction extends SymbolNavigationAction {
 
 CommandsRegistry.registerCommand({
 	id: 'editor.action.goToLocations',
-	description: {
+	metadata: {
 		description: 'Go to locations from a position in a file',
 		args: [
 			{ name: 'uri', description: 'The text document in which to start', constraint: URI },
@@ -814,7 +824,7 @@ CommandsRegistry.registerCommand({
 
 			return editor.invokeWithinContext(accessor => {
 				const command = new class extends GenericGoToLocationAction {
-					override _getNoResultFoundMessage(info: IWordAtPosition | null) {
+					protected override _getNoResultFoundMessage(info: IWordAtPosition | null) {
 						return noResultsMessage || super._getNoResultFoundMessage(info);
 					}
 				}({
@@ -831,7 +841,7 @@ CommandsRegistry.registerCommand({
 
 CommandsRegistry.registerCommand({
 	id: 'editor.action.peekLocations',
-	description: {
+	metadata: {
 		description: 'Peek locations from a position in a file',
 		args: [
 			{ name: 'uri', description: 'The text document in which to start', constraint: URI },

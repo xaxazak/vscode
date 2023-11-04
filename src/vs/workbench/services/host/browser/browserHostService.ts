@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Event } from 'vs/base/common/event';
+import { Emitter, Event } from 'vs/base/common/event';
 import { IHostService } from 'vs/workbench/services/host/browser/host';
-import { registerSingleton } from 'vs/platform/instantiation/common/extensions';
+import { InstantiationType, registerSingleton } from 'vs/platform/instantiation/common/extensions';
 import { ILayoutService } from 'vs/platform/layout/browser/layoutService';
 import { IEditorService } from 'vs/workbench/services/editor/common/editorService';
 import { IConfigurationService } from 'vs/platform/configuration/common/configuration';
@@ -13,8 +13,8 @@ import { IWindowSettings, IWindowOpenable, IOpenWindowOptions, isFolderToOpen, i
 import { isResourceEditorInput, pathsToEditors } from 'vs/workbench/common/editor';
 import { whenEditorClosed } from 'vs/workbench/browser/editor';
 import { IFileService } from 'vs/platform/files/common/files';
-import { ILabelService } from 'vs/platform/label/common/label';
-import { ModifierKeyEmitter, trackFocus } from 'vs/base/browser/dom';
+import { ILabelService, Verbosity } from 'vs/platform/label/common/label';
+import { ModifierKeyEmitter, getActiveDocument, onDidRegisterWindow, trackFocus } from 'vs/base/browser/dom';
 import { Disposable } from 'vs/base/common/lifecycle';
 import { IBrowserWorkbenchEnvironmentService } from 'vs/workbench/services/environment/browser/environmentService';
 import { memoize } from 'vs/base/common/decorators';
@@ -37,6 +37,8 @@ import { Schemas } from 'vs/base/common/network';
 import { ITextEditorOptions } from 'vs/platform/editor/common/editor';
 import { IUserDataProfileService } from 'vs/workbench/services/userDataProfile/common/userDataProfile';
 import { coalesce } from 'vs/base/common/arrays';
+import { isAuxiliaryWindow } from 'vs/workbench/services/auxiliaryWindow/browser/auxiliaryWindowService';
+import { disposableInterval } from 'vs/base/common/async';
 
 /**
  * A workspace to open in the workbench can either be:
@@ -179,32 +181,67 @@ export class BrowserHostService extends Disposable implements IHostService {
 
 	@memoize
 	get onDidChangeFocus(): Event<boolean> {
-		const focusTracker = this._register(trackFocus(window));
-		const onVisibilityChange = this._register(new DomEmitter(window.document, 'visibilitychange'));
+		const emitter = this._register(new Emitter<boolean>());
 
-		return Event.latch(Event.any(
-			Event.map(focusTracker.onDidFocus, () => this.hasFocus),
-			Event.map(focusTracker.onDidBlur, () => this.hasFocus),
-			Event.map(onVisibilityChange.event, () => this.hasFocus)
-		));
+		this._register(Event.runAndSubscribe(onDidRegisterWindow, ({ window, disposables }) => {
+			const focusTracker = disposables.add(trackFocus(window));
+			const visibilityTracker = disposables.add(new DomEmitter(window.document, 'visibilitychange'));
+
+			Event.latch(Event.any(
+				Event.map(focusTracker.onDidFocus, () => this.hasFocus, disposables),
+				Event.map(focusTracker.onDidBlur, () => this.hasFocus, disposables),
+				Event.map(visibilityTracker.event, () => this.hasFocus, disposables),
+			), undefined, disposables)(focus => emitter.fire(focus));
+		}, { window, disposables: this._store }));
+
+		return emitter.event;
 	}
 
 	get hasFocus(): boolean {
-		return document.hasFocus();
+		return getActiveDocument().hasFocus();
 	}
 
 	async hadLastFocus(): Promise<boolean> {
 		return true;
 	}
 
-	async focus(): Promise<void> {
-		window.focus();
+	async focus(targetWindow: Window): Promise<void> {
+		targetWindow.focus();
 	}
 
 	//#endregion
 
 
 	//#region Window
+
+	@memoize
+	get onDidChangeActiveWindow(): Event<void> {
+		const emitter = this._register(new Emitter<number>());
+
+		this._register(Event.runAndSubscribe(onDidRegisterWindow, ({ window, disposables }) => {
+			const windowId = isAuxiliaryWindow(window) ? window.vscodeWindowId : -1;
+
+			// Emit via focus tracking
+			const focusTracker = disposables.add(trackFocus(window));
+			disposables.add(focusTracker.onDidFocus(() => emitter.fire(windowId)));
+
+			// Emit via interval: immediately when opening an auxiliary window,
+			// it is possible that document focus has not yet changed, so we
+			// poll for a while to ensure we catch the event.
+			if (windowId !== -1) {
+				disposables.add(disposableInterval(() => {
+					const hasFocus = window.document.hasFocus();
+					if (hasFocus) {
+						emitter.fire(windowId);
+					}
+
+					return hasFocus;
+				}, 100, 20));
+			}
+		}, { window, disposables: this._store }));
+
+		return Event.map(Event.latch(emitter.event, undefined, this._store), () => undefined, this._store);
+	}
 
 	openWindow(options?: IOpenEmptyWindowOptions): Promise<void>;
 	openWindow(toOpen: IWindowOpenable[], options?: IOpenWindowOptions): Promise<void>;
@@ -259,7 +296,7 @@ export class BrowserHostService extends Disposable implements IHostService {
 
 				// Support mergeMode
 				if (options?.mergeMode && fileOpenables.length === 4) {
-					const editors = coalesce(await pathsToEditors(fileOpenables, this.fileService));
+					const editors = coalesce(await pathsToEditors(fileOpenables, this.fileService, this.logService));
 					if (editors.length !== 4 || !isResourceEditorInput(editors[0]) || !isResourceEditorInput(editors[1]) || !isResourceEditorInput(editors[2]) || !isResourceEditorInput(editors[3])) {
 						return; // invalid resources
 					}
@@ -289,7 +326,7 @@ export class BrowserHostService extends Disposable implements IHostService {
 
 				// Support diffMode
 				if (options?.diffMode && fileOpenables.length === 2) {
-					const editors = coalesce(await pathsToEditors(fileOpenables, this.fileService));
+					const editors = coalesce(await pathsToEditors(fileOpenables, this.fileService, this.logService));
 					if (editors.length !== 2 || !isResourceEditorInput(editors[0]) || !isResourceEditorInput(editors[1])) {
 						return; // invalid resources
 					}
@@ -334,7 +371,7 @@ export class BrowserHostService extends Disposable implements IHostService {
 								openables = [openable];
 							}
 
-							editorService.openEditors(coalesce(await pathsToEditors(openables, this.fileService)), undefined, { validateTrust: true });
+							editorService.openEditors(coalesce(await pathsToEditors(openables, this.fileService, this.logService)), undefined, { validateTrust: true });
 						}
 
 						// New Window: open into empty window
@@ -399,11 +436,11 @@ export class BrowserHostService extends Disposable implements IHostService {
 
 	private getRecentLabel(openable: IWindowOpenable): string {
 		if (isFolderToOpen(openable)) {
-			return this.labelService.getWorkspaceLabel(openable.folderUri, { verbose: true });
+			return this.labelService.getWorkspaceLabel(openable.folderUri, { verbose: Verbosity.LONG });
 		}
 
 		if (isWorkspaceToOpen(openable)) {
-			return this.labelService.getWorkspaceLabel(getWorkspaceIdentifier(openable.workspaceUri), { verbose: true });
+			return this.labelService.getWorkspaceLabel(getWorkspaceIdentifier(openable.workspaceUri), { verbose: Verbosity.LONG });
 		}
 
 		return this.labelService.getUriLabel(openable.fileUri);
@@ -456,19 +493,23 @@ export class BrowserHostService extends Disposable implements IHostService {
 
 		const opened = await this.workspaceProvider.open(workspace, options);
 		if (!opened) {
-			const showResult = await this.dialogService.show(Severity.Warning, localize('unableToOpenExternal', "The browser interrupted the opening of a new tab or window. Press 'Open' to open it anyway."), [localize('open', "Open"), localize('cancel', "Cancel")], { cancelId: 1 });
-			if (showResult.choice === 0) {
+			const { confirmed } = await this.dialogService.confirm({
+				type: Severity.Warning,
+				message: localize('unableToOpenExternal', "The browser interrupted the opening of a new tab or window. Press 'Open' to open it anyway."),
+				primaryButton: localize({ key: 'open', comment: ['&& denotes a mnemonic'] }, "&&Open")
+			});
+			if (confirmed) {
 				await this.workspaceProvider.open(workspace, options);
 			}
 		}
 	}
 
-	async toggleFullScreen(): Promise<void> {
-		const target = this.layoutService.container;
+	async toggleFullScreen(targetWindow: Window): Promise<void> {
+		const target = this.layoutService.getContainer(targetWindow);
 
 		// Chromium
-		if (document.fullscreen !== undefined) {
-			if (!document.fullscreen) {
+		if (targetWindow.document.fullscreen !== undefined) {
+			if (!targetWindow.document.fullscreen) {
 				try {
 					return await target.requestFullscreen();
 				} catch (error) {
@@ -476,7 +517,7 @@ export class BrowserHostService extends Disposable implements IHostService {
 				}
 			} else {
 				try {
-					return await document.exitFullscreen();
+					return await targetWindow.document.exitFullscreen();
 				} catch (error) {
 					this.logService.warn('toggleFullScreen(): exitFullscreen failed');
 				}
@@ -484,17 +525,21 @@ export class BrowserHostService extends Disposable implements IHostService {
 		}
 
 		// Safari and Edge 14 are all using webkit prefix
-		if ((<any>document).webkitIsFullScreen !== undefined) {
+		if ((<any>targetWindow.document).webkitIsFullScreen !== undefined) {
 			try {
-				if (!(<any>document).webkitIsFullScreen) {
+				if (!(<any>targetWindow.document).webkitIsFullScreen) {
 					(<any>target).webkitRequestFullscreen(); // it's async, but doesn't return a real promise.
 				} else {
-					(<any>document).webkitExitFullscreen(); // it's async, but doesn't return a real promise.
+					(<any>targetWindow.document).webkitExitFullscreen(); // it's async, but doesn't return a real promise.
 				}
 			} catch {
 				this.logService.warn('toggleFullScreen(): requestFullscreen/exitFullscreen failed');
 			}
 		}
+	}
+
+	async moveTop(targetWindow: Window): Promise<void> {
+		// There seems to be no API to bring a window to front in browsers
 	}
 
 	//#endregion
@@ -517,6 +562,16 @@ export class BrowserHostService extends Disposable implements IHostService {
 		window.close();
 	}
 
+	async withExpectedShutdown<T>(expectedShutdownTask: () => Promise<T>): Promise<T> {
+		const previousShutdownReason = this.shutdownReason;
+		try {
+			this.shutdownReason = HostShutdownReason.Api;
+			return await expectedShutdownTask();
+		} finally {
+			this.shutdownReason = previousShutdownReason;
+		}
+	}
+
 	private async handleExpectedShutdown(reason: ShutdownReason): Promise<void> {
 
 		// Update shutdown reason in a way that we do
@@ -531,4 +586,4 @@ export class BrowserHostService extends Disposable implements IHostService {
 	//#endregion
 }
 
-registerSingleton(IHostService, BrowserHostService, true);
+registerSingleton(IHostService, BrowserHostService, InstantiationType.Delayed);

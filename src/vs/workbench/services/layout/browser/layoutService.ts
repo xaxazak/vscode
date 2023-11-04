@@ -23,6 +23,24 @@ export const enum Parts {
 	STATUSBAR_PART = 'workbench.parts.statusbar'
 }
 
+export const enum LayoutSettings {
+	ACTIVITY_BAR_LOCATION = 'workbench.activityBar.location',
+	EDITOR_TABS_MODE = 'workbench.editor.showTabs',
+	COMMAND_CENTER = 'window.commandCenter',
+}
+
+export const enum ActivityBarPosition {
+	SIDE = 'side',
+	TOP = 'top',
+	HIDDEN = 'hidden'
+}
+
+export const enum EditorTabsMode {
+	MULTIPLE = 'multiple',
+	SINGLE = 'single',
+	NONE = 'none'
+}
+
 export const enum Position {
 	LEFT,
 	RIGHT,
@@ -56,7 +74,7 @@ export function positionFromString(str: string): Position {
 	return positionsByString[str];
 }
 
-export function panelOpensMaximizedSettingToString(setting: PanelOpensMaximizedOptions): string {
+function panelOpensMaximizedSettingToString(setting: PanelOpensMaximizedOptions): string {
 	switch (setting) {
 		case PanelOpensMaximizedOptions.ALWAYS: return 'always';
 		case PanelOpensMaximizedOptions.NEVER: return 'never';
@@ -120,6 +138,18 @@ export interface IWorkbenchLayoutService extends ILayoutService {
 	readonly onDidChangeNotificationsVisibility: Event<boolean>;
 
 	/**
+	 * An event that is emitted when a new container is added. This
+	 * can happen in multi-window environments.
+	 */
+	readonly onDidAddContainer: Event<HTMLElement>;
+
+	/**
+	 * An event that is emitted when a container is removed. This
+	 * can happen in multi-window environments.
+	 */
+	readonly onDidRemoveContainer: Event<HTMLElement>;
+
+	/**
 	 * True if a default layout with default editors was applied at startup
 	 */
 	readonly openedDefaultEditors: boolean;
@@ -153,6 +183,7 @@ export interface IWorkbenchLayoutService extends ILayoutService {
 	/**
 	 * Returns the parts HTML element, if there is one.
 	 */
+	getContainer(window: Window): HTMLElement;
 	getContainer(part: Parts): HTMLElement | undefined;
 
 	/**

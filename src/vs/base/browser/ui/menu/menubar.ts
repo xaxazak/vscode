@@ -13,13 +13,13 @@ import { ActionRunner, IAction, IActionRunner, Separator, SubmenuAction } from '
 import { asArray } from 'vs/base/common/arrays';
 import { RunOnceScheduler } from 'vs/base/common/async';
 import { Codicon } from 'vs/base/common/codicons';
+import { ThemeIcon } from 'vs/base/common/themables';
 import { Emitter, Event } from 'vs/base/common/event';
 import { KeyCode, KeyMod, ScanCode, ScanCodeUtils } from 'vs/base/common/keyCodes';
 import { ResolvedKeybinding } from 'vs/base/common/keybindings';
 import { Disposable, dispose, IDisposable } from 'vs/base/common/lifecycle';
 import { isMacintosh } from 'vs/base/common/platform';
 import * as strings from 'vs/base/common/strings';
-import { withNullAsUndefined } from 'vs/base/common/types';
 import 'vs/css!./menubar';
 import * as nls from 'vs/nls';
 
@@ -85,10 +85,9 @@ export class MenuBar extends Disposable {
 	private readonly _onFocusStateChange: Emitter<boolean>;
 
 	private numMenusShown: number = 0;
-	private menuStyle: IMenuStyles | undefined;
 	private overflowLayoutScheduled: IDisposable | undefined = undefined;
 
-	constructor(private container: HTMLElement, private options: IMenuBarOptions = {}) {
+	constructor(private container: HTMLElement, private options: IMenuBarOptions, private menuStyle: IMenuStyles) {
 		super();
 
 		this.container.setAttribute('role', 'menubar');
@@ -146,6 +145,7 @@ export class MenuBar extends Disposable {
 			}
 		}));
 
+		const window = DOM.getWindow(this.container);
 		this._register(DOM.addDisposableListener(window, DOM.EventType.MOUSE_DOWN, () => {
 			// This mouse event is outside the menubar so it counts as a focus out
 			if (this.isFocused) {
@@ -314,7 +314,7 @@ export class MenuBar extends Disposable {
 	createOverflowMenu(): void {
 		const label = this.isCompact ? nls.localize('mAppMenu', 'Application Menu') : nls.localize('mMore', 'More');
 		const buttonElement = $('div.menubar-menu-button', { 'role': 'menuitem', 'tabindex': this.isCompact ? 0 : -1, 'aria-label': label, 'aria-haspopup': true });
-		const titleElement = $('div.menubar-menu-title.toolbar-toggle-more' + Codicon.menuBarMore.cssSelector, { 'role': 'none', 'aria-hidden': true });
+		const titleElement = $('div.menubar-menu-title.toolbar-toggle-more' + ThemeIcon.asCSSSelector(Codicon.menuBarMore), { 'role': 'none', 'aria-hidden': true });
 
 		buttonElement.appendChild(titleElement);
 		this.container.appendChild(buttonElement);
@@ -506,7 +506,7 @@ export class MenuBar extends Disposable {
 
 
 		// If below minimium menu threshold, show the overflow menu only as hamburger menu
-		if (this.numMenusShown - 1 <= showableMenus.length / 2) {
+		if (this.numMenusShown - 1 <= showableMenus.length / 4) {
 			for (const menuBarMenu of showableMenus) {
 				menuBarMenu.buttonElement.style.visibility = 'hidden';
 			}
@@ -607,10 +607,6 @@ export class MenuBar extends Disposable {
 		}
 	}
 
-	style(style: IMenuStyles): void {
-		this.menuStyle = style;
-	}
-
 	update(options?: IMenuBarOptions): void {
 		if (options) {
 			this.options = options;
@@ -634,7 +630,7 @@ export class MenuBar extends Disposable {
 			this.overflowLayoutScheduled = DOM.scheduleAtNextAnimationFrame(() => {
 				this.updateOverflowAction();
 				this.overflowLayoutScheduled = undefined;
-			});
+			}, DOM.getWindow(this.container));
 		}
 
 		this.setUnfocusedState();
@@ -1024,15 +1020,12 @@ export class MenuBar extends Disposable {
 			getKeyBinding: this.options.getKeybinding,
 			actionRunner: this.actionRunner,
 			enableMnemonics: this.options.alwaysOnMnemonics || (this.mnemonicsInUse && this.options.enableMnemonics),
-			ariaLabel: withNullAsUndefined(customMenu.buttonElement.getAttribute('aria-label')),
+			ariaLabel: customMenu.buttonElement.getAttribute('aria-label') ?? undefined,
 			expandDirection: this.isCompact ? this.options.compactMode : Direction.Right,
 			useEventAsContext: true
 		};
 
-		const menuWidget = this._register(new Menu(menuHolder, customMenu.actions, menuOptions));
-		if (this.menuStyle) {
-			menuWidget.style(this.menuStyle);
-		}
+		const menuWidget = this._register(new Menu(menuHolder, customMenu.actions, menuOptions, this.menuStyle));
 
 		this._register(menuWidget.onDidCancel(() => {
 			this.focusState = MenubarState.FOCUSED;

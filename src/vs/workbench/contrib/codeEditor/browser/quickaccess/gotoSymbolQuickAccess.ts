@@ -4,8 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { localize } from 'vs/nls';
-import { IKeyMods, IQuickPickSeparator, IQuickInputService, IQuickPick } from 'vs/platform/quickinput/common/quickInput';
-import { IEditor } from 'vs/editor/common/editorCommon';
+import { IKeyMods, IQuickPickSeparator, IQuickInputService, IQuickPick, ItemActivation } from 'vs/platform/quickinput/common/quickInput';
 import { IEditorService } from 'vs/workbench/services/editor/common/editorService';
 import { IRange } from 'vs/editor/common/core/range';
 import { Registry } from 'vs/platform/registry/common/platform';
@@ -32,6 +31,8 @@ import { ITextEditorOptions } from 'vs/platform/editor/common/editor';
 import { IEditorGroupsService } from 'vs/workbench/services/editor/common/editorGroupsService';
 import { IOutlineModelService } from 'vs/editor/contrib/documentSymbols/browser/outlineModel';
 import { ILanguageFeaturesService } from 'vs/editor/common/services/languageFeatures';
+import { ContextKeyExpr } from 'vs/platform/contextkey/common/contextkey';
+import { accessibilityHelpIsShown, accessibleViewIsShown } from 'vs/workbench/contrib/accessibility/browser/accessibilityConfiguration';
 
 export class GotoSymbolQuickAccessProvider extends AbstractGotoSymbolQuickAccessProvider {
 
@@ -117,14 +118,6 @@ export class GotoSymbolQuickAccessProvider extends AbstractGotoSymbolQuickAccess
 		}
 
 		return this.doGetSymbolPicks(this.getDocumentSymbols(model, token), prepareQuery(filter), options, token);
-	}
-
-	override addDecorations(editor: IEditor, range: IRange): void {
-		super.addDecorations(editor, range);
-	}
-
-	override clearDecorations(editor: IEditor): void {
-		super.clearDecorations(editor);
 	}
 
 	//#endregion
@@ -257,7 +250,7 @@ class GotoSymbolAction extends Action2 {
 			},
 			f1: true,
 			keybinding: {
-				when: undefined,
+				when: ContextKeyExpr.and(accessibleViewIsShown.negate(), accessibilityHelpIsShown.negate()),
 				weight: KeybindingWeight.WorkbenchContrib,
 				primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyO
 			},
@@ -270,7 +263,7 @@ class GotoSymbolAction extends Action2 {
 	}
 
 	run(accessor: ServicesAccessor) {
-		accessor.get(IQuickInputService).quickAccess.show(GotoSymbolQuickAccessProvider.PREFIX);
+		accessor.get(IQuickInputService).quickAccess.show(GotoSymbolQuickAccessProvider.PREFIX, { itemActivation: ItemActivation.NONE });
 	}
 }
 
@@ -282,7 +275,15 @@ Registry.as<IQuickAccessRegistry>(QuickaccessExtensions.Quickaccess).registerQui
 	contextKey: 'inFileSymbolsPicker',
 	placeholder: localize('gotoSymbolQuickAccessPlaceholder', "Type the name of a symbol to go to."),
 	helpEntries: [
-		{ description: localize('gotoSymbolQuickAccess', "Go to Symbol in Editor"), prefix: AbstractGotoSymbolQuickAccessProvider.PREFIX, commandId: GotoSymbolAction.ID },
-		{ description: localize('gotoSymbolByCategoryQuickAccess', "Go to Symbol in Editor by Category"), prefix: AbstractGotoSymbolQuickAccessProvider.PREFIX_BY_CATEGORY }
+		{
+			description: localize('gotoSymbolQuickAccess', "Go to Symbol in Editor"),
+			prefix: AbstractGotoSymbolQuickAccessProvider.PREFIX,
+			commandId: GotoSymbolAction.ID,
+			commandCenterOrder: 40
+		},
+		{
+			description: localize('gotoSymbolByCategoryQuickAccess', "Go to Symbol in Editor by Category"),
+			prefix: AbstractGotoSymbolQuickAccessProvider.PREFIX_BY_CATEGORY
+		}
 	]
 });

@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DisposableStore, IDisposable, toDisposable } from 'vs/base/common/lifecycle';
+import { mock } from 'vs/base/test/common/mock';
 import { EditorConfiguration, IEditorConstructionOptions } from 'vs/editor/browser/config/editorConfiguration';
 import { IActiveCodeEditor, ICodeEditor } from 'vs/editor/browser/editorBrowser';
 import { ICodeEditorService } from 'vs/editor/browser/services/codeEditorService';
@@ -39,15 +40,18 @@ import { TestConfigurationService } from 'vs/platform/configuration/test/common/
 import { IContextKeyService, IContextKeyServiceTarget } from 'vs/platform/contextkey/common/contextkey';
 import { IDialogService } from 'vs/platform/dialogs/common/dialogs';
 import { TestDialogService } from 'vs/platform/dialogs/test/common/testDialogService';
+import { IEnvironmentService } from 'vs/platform/environment/common/environment';
 import { SyncDescriptor } from 'vs/platform/instantiation/common/descriptors';
 import { BrandedService, IInstantiationService, ServiceIdentifier } from 'vs/platform/instantiation/common/instantiation';
 import { ServiceCollection } from 'vs/platform/instantiation/common/serviceCollection';
 import { TestInstantiationService } from 'vs/platform/instantiation/test/common/instantiationServiceMock';
-import { MockContextKeyService } from 'vs/platform/keybinding/test/common/mockKeybindingService';
+import { IKeybindingService } from 'vs/platform/keybinding/common/keybinding';
+import { MockContextKeyService, MockKeybindingService } from 'vs/platform/keybinding/test/common/mockKeybindingService';
 import { ILogService, NullLogService } from 'vs/platform/log/common/log';
 import { INotificationService } from 'vs/platform/notification/common/notification';
 import { TestNotificationService } from 'vs/platform/notification/test/common/testNotificationService';
-import { IOpenerService, NullOpenerService } from 'vs/platform/opener/common/opener';
+import { IOpenerService } from 'vs/platform/opener/common/opener';
+import { NullOpenerService } from 'vs/platform/opener/test/common/nullOpenerService';
 import { ITelemetryService } from 'vs/platform/telemetry/common/telemetry';
 import { NullTelemetryServiceShape } from 'vs/platform/telemetry/common/telemetryUtils';
 import { IThemeService } from 'vs/platform/theme/common/themeService';
@@ -86,7 +90,7 @@ export class TestCodeEditor extends CodeEditorWidget implements ICodeEditor {
 	}
 	public registerAndInstantiateContribution<T extends IEditorContribution>(id: string, ctor: new (editor: ICodeEditor, ...services: BrandedService[]) => T): T {
 		const r: T = this._instantiationService.createInstance(ctor, this);
-		this._contributions[id] = r;
+		this._contributions.set(id, r);
 		return r;
 	}
 	public registerDisposable(disposable: IDisposable): void {
@@ -96,6 +100,8 @@ export class TestCodeEditor extends CodeEditorWidget implements ICodeEditor {
 
 class TestEditorDomElement {
 	parentElement: IContextKeyServiceTarget | null = null;
+	ownerDocument = document;
+	document = document;
 	setAttribute(attr: string, value: string): void { }
 	removeAttribute(attr: string): void { }
 	hasAttribute(attr: string): boolean { return false; }
@@ -133,7 +139,7 @@ function isTextModel(arg: ITextModel | string | string[] | ITextBufferFactory): 
 
 function _withTestCodeEditor(arg: ITextModel | string | string[] | ITextBufferFactory, options: TestCodeEditorInstantiationOptions, callback: (editor: ITestCodeEditor, viewModel: ViewModel, instantiationService: TestInstantiationService) => void): void;
 function _withTestCodeEditor(arg: ITextModel | string | string[] | ITextBufferFactory, options: TestCodeEditorInstantiationOptions, callback: (editor: ITestCodeEditor, viewModel: ViewModel, instantiationService: TestInstantiationService) => Promise<void>): Promise<void>;
-async function _withTestCodeEditor(arg: ITextModel | string | string[] | ITextBufferFactory, options: TestCodeEditorInstantiationOptions, callback: (editor: ITestCodeEditor, viewModel: ViewModel, instantiationService: TestInstantiationService) => Promise<void> | void): Promise<Promise<void> | void> {
+function _withTestCodeEditor(arg: ITextModel | string | string[] | ITextBufferFactory, options: TestCodeEditorInstantiationOptions, callback: (editor: ITestCodeEditor, viewModel: ViewModel, instantiationService: TestInstantiationService) => Promise<void> | void): Promise<void> | void {
 	const disposables = new DisposableStore();
 	const instantiationService = createCodeEditorServices(disposables, options.serviceCollection);
 	delete options.serviceCollection;
@@ -149,12 +155,12 @@ async function _withTestCodeEditor(arg: ITextModel | string | string[] | ITextBu
 	const editor = disposables.add(instantiateTestCodeEditor(instantiationService, model, options));
 	const viewModel = editor.getViewModel()!;
 	viewModel.setHasFocus(true);
-	try {
-		const result = callback(<ITestCodeEditor>editor, editor.getViewModel()!, instantiationService);
-		await result;
-	} finally {
-		disposables.dispose();
+	const result = callback(<ITestCodeEditor>editor, editor.getViewModel()!, instantiationService);
+	if (result) {
+		return result.then(() => disposables.dispose());
 	}
+
+	disposables.dispose();
 }
 
 export function createCodeEditorServices(disposables: DisposableStore, services: ServiceCollection = new ServiceCollection()): TestInstantiationService {
@@ -173,6 +179,7 @@ export function createCodeEditorServices(disposables: DisposableStore, services:
 	};
 
 	define(IAccessibilityService, TestAccessibilityService);
+	define(IKeybindingService, MockKeybindingService);
 	define(IClipboardService, TestClipboardService);
 	define(IEditorWorkerService, TestEditorWorkerService);
 	defineInstance(IOpenerService, NullOpenerService);
@@ -190,10 +197,15 @@ export function createCodeEditorServices(disposables: DisposableStore, services:
 	define(IContextKeyService, MockContextKeyService);
 	define(ICommandService, TestCommandService);
 	define(ITelemetryService, NullTelemetryServiceShape);
+	define(IEnvironmentService, class extends mock<IEnvironmentService>() {
+		declare readonly _serviceBrand: undefined;
+		override isBuilt: boolean = true;
+		override isExtensionDevelopment: boolean = false;
+	});
 	define(ILanguageFeatureDebounceService, LanguageFeatureDebounceService);
 	define(ILanguageFeaturesService, LanguageFeaturesService);
 
-	const instantiationService = new TestInstantiationService(services, true);
+	const instantiationService = disposables.add(new TestInstantiationService(services, true));
 	disposables.add(toDisposable(() => {
 		for (const id of serviceIdentifiers) {
 			const instanceOrDescriptor = services.get(id);

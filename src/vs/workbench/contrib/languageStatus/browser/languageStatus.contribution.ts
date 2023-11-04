@@ -11,13 +11,12 @@ import Severity from 'vs/base/common/severity';
 import { getCodeEditor, ICodeEditor } from 'vs/editor/browser/editorBrowser';
 import { localize } from 'vs/nls';
 import { Registry } from 'vs/platform/registry/common/platform';
-import { ThemeColor, themeColorFromId } from 'vs/platform/theme/common/themeService';
+import { ThemeIcon } from 'vs/base/common/themables';
 import { IWorkbenchContributionsRegistry, Extensions as WorkbenchExtensions, IWorkbenchContribution } from 'vs/workbench/common/contributions';
-import { STATUS_BAR_ERROR_ITEM_BACKGROUND, STATUS_BAR_ERROR_ITEM_FOREGROUND, STATUS_BAR_WARNING_ITEM_BACKGROUND, STATUS_BAR_WARNING_ITEM_FOREGROUND } from 'vs/workbench/common/theme';
 import { IEditorService } from 'vs/workbench/services/editor/common/editorService';
 import { ILanguageStatus, ILanguageStatusService } from 'vs/workbench/services/languageStatus/common/languageStatusService';
 import { LifecyclePhase } from 'vs/workbench/services/lifecycle/common/lifecycle';
-import { IStatusbarEntry, IStatusbarEntryAccessor, IStatusbarService, ShowTooltipCommand, StatusbarAlignment } from 'vs/workbench/services/statusbar/browser/statusbar';
+import { IStatusbarEntry, IStatusbarEntryAccessor, IStatusbarService, ShowTooltipCommand, StatusbarAlignment, StatusbarEntryKind } from 'vs/workbench/services/statusbar/browser/statusbar';
 import { parseLinkedText } from 'vs/base/common/linkedText';
 import { Link } from 'vs/platform/opener/browser/link';
 import { IOpenerService } from 'vs/platform/opener/common/opener';
@@ -25,11 +24,13 @@ import { MarkdownString } from 'vs/base/common/htmlContent';
 import { ActionBar } from 'vs/base/browser/ui/actionbar/actionbar';
 import { Action } from 'vs/base/common/actions';
 import { Codicon } from 'vs/base/common/codicons';
-import { IStorageService, IStorageValueChangeEvent, StorageScope, StorageTarget } from 'vs/platform/storage/common/storage';
+import { IStorageService, StorageScope, StorageTarget } from 'vs/platform/storage/common/storage';
 import { equals } from 'vs/base/common/arrays';
 import { URI } from 'vs/base/common/uri';
 import { Action2, registerAction2 } from 'vs/platform/actions/common/actions';
 import { ServicesAccessor } from 'vs/platform/instantiation/common/instantiation';
+import { Categories } from 'vs/platform/action/common/actionCommonCategories';
+import { IAccessibilityInformation } from 'vs/platform/accessibility/common/accessibility';
 
 class LanguageStatusViewModel {
 
@@ -72,7 +73,7 @@ class EditorStatusContribution implements IWorkbenchContribution {
 	private _model?: LanguageStatusViewModel;
 	private _combinedEntry?: IStatusbarEntryAccessor;
 	private _dedicatedEntries = new Map<string, IStatusbarEntryAccessor>();
-	private _renderDisposables = new DisposableStore();
+	private readonly _renderDisposables = new DisposableStore();
 
 	constructor(
 		@ILanguageStatusService private readonly _languageStatusService: ILanguageStatusService,
@@ -81,7 +82,7 @@ class EditorStatusContribution implements IWorkbenchContribution {
 		@IOpenerService private readonly _openerService: IOpenerService,
 		@IStorageService private readonly _storageService: IStorageService,
 	) {
-		_storageService.onDidChangeValue(this._handleStorageChange, this, this._disposables);
+		_storageService.onDidChangeValue(StorageScope.PROFILE, EditorStatusContribution._keyDedicatedItems, this._disposables)(this._handleStorageChange, this, this._disposables);
 		this._restoreState();
 		this._interactionCounter = new StoredCounter(_storageService, 'languageStatus.interactCount');
 
@@ -108,10 +109,7 @@ class EditorStatusContribution implements IWorkbenchContribution {
 
 	// --- persisting dedicated items
 
-	private _handleStorageChange(e: IStorageValueChangeEvent) {
-		if (e.key !== EditorStatusContribution._keyDedicatedItems) {
-			return;
-		}
+	private _handleStorageChange() {
 		this._restoreState();
 		this._update();
 	}
@@ -185,7 +183,7 @@ class EditorStatusContribution implements IWorkbenchContribution {
 			for (const status of model.combined) {
 				const isPinned = model.dedicated.includes(status);
 				element.appendChild(this._renderStatus(status, showSeverity, isPinned, this._renderDisposables));
-				ariaLabels.push(this._asAriaLabel(status));
+				ariaLabels.push(EditorStatusContribution._accessibilityInformation(status).label);
 				isOneBusy = isOneBusy || (!isPinned && status.busy); // unpinned items contribute to the busy-indicator of the composite status item
 			}
 			const props: IStatusbarEntry = {
@@ -278,7 +276,8 @@ class EditorStatusContribution implements IWorkbenchContribution {
 
 		const label = document.createElement('span');
 		label.classList.add('label');
-		dom.append(label, ...renderLabelWithIcons(status.busy ? `$(sync~spin)\u00A0\u00A0${status.label}` : status.label));
+		const labelValue = typeof status.label === 'string' ? status.label : status.label.value;
+		dom.append(label, ...renderLabelWithIcons(status.busy ? `$(sync~spin)\u00A0\u00A0${labelValue}` : labelValue));
 		left.appendChild(label);
 
 		const detail = document.createElement('span');
@@ -307,14 +306,14 @@ class EditorStatusContribution implements IWorkbenchContribution {
 		store.add(actionBar);
 		let action: Action;
 		if (!isPinned) {
-			action = new Action('pin', localize('pin', "Add to Status Bar"), Codicon.pin.classNames, true, () => {
+			action = new Action('pin', localize('pin', "Add to Status Bar"), ThemeIcon.asClassName(Codicon.pin), true, () => {
 				this._dedicated.add(status.id);
 				this._statusBarService.updateEntryVisibility(status.id, true);
 				this._update();
 				this._storeState();
 			});
 		} else {
-			action = new Action('unpin', localize('unpin', "Remove from Status Bar"), Codicon.pinned.classNames, true, () => {
+			action = new Action('unpin', localize('unpin', "Remove from Status Bar"), ThemeIcon.asClassName(Codicon.pinned), true, () => {
 				this._dedicated.delete(status.id);
 				this._statusBarService.updateEntryVisibility(status.id, false);
 				this._update();
@@ -354,13 +353,15 @@ class EditorStatusContribution implements IWorkbenchContribution {
 		}
 	}
 
-	private _asAriaLabel(status: ILanguageStatus): string {
+	private static _accessibilityInformation(status: ILanguageStatus): IAccessibilityInformation {
 		if (status.accessibilityInfo) {
-			return status.accessibilityInfo.label;
-		} else if (status.detail) {
-			return localize('aria.1', '{0}, {1}', status.label, status.detail);
+			return status.accessibilityInfo;
+		}
+		const textValue = typeof status.label === 'string' ? status.label : status.label.value;
+		if (status.detail) {
+			return { label: localize('aria.1', '{0}, {1}', textValue, status.detail) };
 		} else {
-			return localize('aria.2', '{0}', status.label);
+			return { label: localize('aria.2', '{0}', textValue) };
 		}
 	}
 
@@ -368,24 +369,22 @@ class EditorStatusContribution implements IWorkbenchContribution {
 
 	private static _asStatusbarEntry(item: ILanguageStatus): IStatusbarEntry {
 
-		let color: ThemeColor | undefined;
-		let backgroundColor: ThemeColor | undefined;
+		let kind: StatusbarEntryKind | undefined;
 		if (item.severity === Severity.Warning) {
-			color = themeColorFromId(STATUS_BAR_WARNING_ITEM_FOREGROUND);
-			backgroundColor = themeColorFromId(STATUS_BAR_WARNING_ITEM_BACKGROUND);
+			kind = 'warning';
 		} else if (item.severity === Severity.Error) {
-			color = themeColorFromId(STATUS_BAR_ERROR_ITEM_FOREGROUND);
-			backgroundColor = themeColorFromId(STATUS_BAR_ERROR_ITEM_BACKGROUND);
+			kind = 'error';
 		}
+
+		const textValue = typeof item.label === 'string' ? item.label : item.label.shortValue;
 
 		return {
 			name: localize('name.pattern', '{0} (Language Status)', item.name),
-			text: item.busy ? `${item.label}\u00A0\u00A0$(sync~spin)` : item.label,
-			ariaLabel: item.accessibilityInfo?.label ?? item.label,
+			text: item.busy ? `${textValue}\u00A0\u00A0$(sync~spin)` : textValue,
+			ariaLabel: EditorStatusContribution._accessibilityInformation(item).label,
 			role: item.accessibilityInfo?.role,
 			tooltip: item.command?.tooltip || new MarkdownString(item.detail, { isTrusted: true, supportThemeIcons: true }),
-			color,
-			backgroundColor,
+			kind,
 			command: item.command
 		};
 	}
@@ -402,10 +401,7 @@ registerAction2(class extends Action2 {
 				value: localize('reset', 'Reset Language Status Interaction Counter'),
 				original: 'Reset Language Status Interaction Counter'
 			},
-			category: {
-				value: localize('cat', 'View'),
-				original: 'View'
-			},
+			category: Categories.View,
 			f1: true
 		});
 	}
