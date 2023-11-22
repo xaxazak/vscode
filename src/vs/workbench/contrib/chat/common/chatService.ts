@@ -36,6 +36,7 @@ export interface IChatResponseErrorDetails {
 	message: string;
 	responseIsIncomplete?: boolean;
 	responseIsFiltered?: boolean;
+	responseIsRedacted?: boolean;
 }
 
 export interface IChatResponse {
@@ -130,9 +131,29 @@ export interface IChatProgressMessage {
 	kind: 'progressMessage';
 }
 
+export interface IChatAgentVulnerabilityDetails {
+	title: string;
+	description: string;
+}
+
+export interface IChatAgentContentWithVulnerabilities {
+	content: string;
+	vulnerabilities?: IChatAgentVulnerabilityDetails[];
+	kind: 'vulnerability';
+}
+
+// TODO@roblourens Temp until I get MarkdownString out of ChatModel
+export interface IChatAgentMarkdownContentWithVulnerability {
+	content: IMarkdownString;
+	vulnerabilities?: IChatAgentVulnerabilityDetails[];
+	kind: 'markdownVuln';
+}
+
 export type IChatProgress =
 	| IChatContent
 	| IChatMarkdownContent
+	| IChatAgentContentWithVulnerabilities
+	| IChatAgentMarkdownContentWithVulnerability
 	| IChatTreeData
 	| IChatAsyncContent
 	| IChatUsedContext
