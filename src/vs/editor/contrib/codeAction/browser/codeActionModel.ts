@@ -45,7 +45,7 @@ class CodeActionOracle extends Disposable {
 	}
 
 	public trigger(trigger: CodeActionTrigger): void {
-		const selection = this._getRangeOfSelectionUnlessWhitespaceEnclosed(trigger);
+		const selection = this._editor.getSelection();
 		this._signalChange(selection ? { trigger, selection } : undefined);
 	}
 
@@ -60,39 +60,6 @@ class CodeActionOracle extends Disposable {
 		this._autoTriggerTimer.cancelAndSet(() => {
 			this.trigger({ type: CodeActionTriggerType.Auto, triggerAction: CodeActionTriggerSource.Default });
 		}, this._delay);
-	}
-
-	private _getRangeOfSelectionUnlessWhitespaceEnclosed(trigger: CodeActionTrigger): Selection | undefined {
-		if (!this._editor.hasModel()) {
-			return undefined;
-		}
-
-		const model = this._editor.getModel();
-		const selection = this._editor.getSelection();
-		if (selection.isEmpty() && trigger.type === CodeActionTriggerType.Auto) {
-			const { lineNumber, column } = selection.getPosition();
-			const line = model.getLineContent(lineNumber);
-			if (line.length === 0) {
-				// empty line
-				return undefined;
-			} else if (column === 1) {
-				// look only right
-				if (/\s/.test(line[0])) {
-					return undefined;
-				}
-			} else if (column === model.getLineMaxColumn(lineNumber)) {
-				// look only left
-				if (/\s/.test(line[line.length - 1])) {
-					return undefined;
-				}
-			} else {
-				// look left and right
-				if (/\s/.test(line[column - 2]) && /\s/.test(line[column - 1])) {
-					return undefined;
-				}
-			}
-		}
-		return selection;
 	}
 }
 
@@ -133,7 +100,9 @@ const emptyCodeActionSet = Object.freeze<CodeActionSet>({
 	validActions: [],
 	dispose: () => { },
 	documentation: [],
-	hasAutoFix: false
+	hasAutoFix: false,
+	hasAIFix: false,
+	allAIFixes: false,
 });
 
 
@@ -210,7 +179,7 @@ export class CodeActionModel extends Disposable {
 				const actions = createCancelablePromise(async token => {
 					if (this._settingEnabledNearbyQuickfixes() && trigger.trigger.type === CodeActionTriggerType.Invoke && (trigger.trigger.triggerAction === CodeActionTriggerSource.QuickFix || trigger.trigger.filter?.include?.contains(CodeActionKind.QuickFix))) {
 						const codeActionSet = await getCodeActions(this._registry, model, trigger.selection, trigger.trigger, Progress.None, token);
-
+						const allCodeActions = [...codeActionSet.allActions];
 						if (token.isCancellationRequested) {
 							return emptyCodeActionSet;
 						}
@@ -251,6 +220,11 @@ export class CodeActionModel extends Disposable {
 											for (const action of actionsAtMarker.validActions) {
 												action.highlightRange = action.action.isPreferred;
 											}
+
+											if (codeActionSet.allActions.length === 0) {
+												allCodeActions.push(...actionsAtMarker.allActions);
+											}
+
 											// Already filtered through to only get quickfixes, so no need to filter again.
 											if (Math.abs(currPosition.column - col) < distance) {
 												currentActions.unshift(...actionsAtMarker.validActions);
@@ -269,13 +243,17 @@ export class CodeActionModel extends Disposable {
 										return -1;
 									} else if (!a.action.isPreferred && b.action.isPreferred) {
 										return 1;
+									} else if (a.action.isAI && !b.action.isAI) {
+										return 1;
+									} else if (!a.action.isAI && b.action.isAI) {
+										return -1;
 									} else {
 										return 0;
 									}
 								});
 
 								// Only retriggers if actually found quickfix on the same line as cursor
-								return { validActions: filteredActions, allActions: codeActionSet.allActions, documentation: codeActionSet.documentation, hasAutoFix: codeActionSet.hasAutoFix, dispose: () => { codeActionSet.dispose(); } };
+								return { validActions: filteredActions, allActions: allCodeActions, documentation: codeActionSet.documentation, hasAutoFix: codeActionSet.hasAutoFix, hasAIFix: codeActionSet.hasAIFix, allAIFixes: codeActionSet.allAIFixes, dispose: () => { codeActionSet.dispose(); } };
 							}
 						}
 					}

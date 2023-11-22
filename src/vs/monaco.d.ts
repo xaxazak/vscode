@@ -974,6 +974,8 @@ declare namespace monaco.editor {
 	 */
 	export function createDiffEditor(domElement: HTMLElement, options?: IStandaloneDiffEditorConstructionOptions, override?: IEditorOverrideServices): IStandaloneDiffEditor;
 
+	export function createMultiFileDiffEditor(domElement: HTMLElement, override?: IEditorOverrideServices): any;
+
 	/**
 	 * Description of a command contribution
 	 */
@@ -1315,7 +1317,7 @@ declare namespace monaco.editor {
 		 * Controls whether completions should be computed based on words in the document.
 		 * Defaults to true.
 		 */
-		wordBasedSuggestions?: boolean;
+		wordBasedSuggestions?: 'off' | 'currentDocument' | 'matchingDocuments' | 'allDocuments';
 		/**
 		 * Controls whether word based completions should be included from opened documents of the same language or any language.
 		 */
@@ -1433,6 +1435,13 @@ declare namespace monaco.editor {
 	}
 	export interface ICommandHandler {
 		(...args: any[]): void;
+	}
+	export interface ILocalizedString {
+		original: string;
+		value: string;
+	}
+	export interface ICommandMetadata {
+		readonly description: ILocalizedString | string;
 	}
 
 	export interface IContextKey<T extends ContextKeyValue = ContextKeyValue> {
@@ -2434,7 +2443,7 @@ declare namespace monaco.editor {
 		modified: ITextModel;
 	}
 
-	export interface IDiffEditorViewModel {
+	export interface IDiffEditorViewModel extends IDisposable {
 		readonly model: IDiffEditorModel;
 		waitForDiff(): Promise<void>;
 	}
@@ -2469,6 +2478,7 @@ declare namespace monaco.editor {
 		readonly id: string;
 		readonly label: string;
 		readonly alias: string;
+		readonly metadata: ICommandMetadata | undefined;
 		isSupported(): boolean;
 		run(args?: unknown): Promise<void>;
 	}
@@ -3533,14 +3543,12 @@ declare namespace monaco.editor {
 		selectionHighlight?: boolean;
 		/**
 		 * Enable semantic occurrences highlight.
-		 * Defaults to true.
+		 * Defaults to 'singleFile'.
+		 * 'off' disables occurrence highlighting
+		 * 'singleFile' triggers occurrence highlighting in the current document
+		 * 'multiFile'  triggers occurrence highlighting across valid open documents
 		 */
-		occurrencesHighlight?: boolean;
-		/**
-		 * Enable semantic occurrences highlight.
-		 * Defaults to true.
-		 */
-		multiDocumentOccurrencesHighlight?: boolean;
+		occurrencesHighlight?: 'off' | 'singleFile' | 'multiFile';
 		/**
 		 * Show code lens
 		 * Defaults to true.
@@ -4436,7 +4444,7 @@ declare namespace monaco.editor {
 		 * Defaults to `prefix`.
 		*/
 		mode?: 'prefix' | 'subword' | 'subwordSmart';
-		showToolbar?: 'always' | 'onHover';
+		showToolbar?: 'always' | 'onHover' | 'never';
 		suppressSuggestions?: boolean;
 		/**
 		 * Does not clear active inline suggestions when the editor loses focus.
@@ -4797,75 +4805,74 @@ declare namespace monaco.editor {
 		multiCursorModifier = 78,
 		multiCursorPaste = 79,
 		multiCursorLimit = 80,
-		multiDocumentOccurrencesHighlight = 81,
-		occurrencesHighlight = 82,
-		overviewRulerBorder = 83,
-		overviewRulerLanes = 84,
-		padding = 85,
-		pasteAs = 86,
-		parameterHints = 87,
-		peekWidgetDefaultFocus = 88,
-		definitionLinkOpensInPeek = 89,
-		quickSuggestions = 90,
-		quickSuggestionsDelay = 91,
-		readOnly = 92,
-		readOnlyMessage = 93,
-		renameOnType = 94,
-		renderControlCharacters = 95,
-		renderFinalNewline = 96,
-		renderLineHighlight = 97,
-		renderLineHighlightOnlyWhenFocus = 98,
-		renderValidationDecorations = 99,
-		renderWhitespace = 100,
-		revealHorizontalRightPadding = 101,
-		roundedSelection = 102,
-		rulers = 103,
-		scrollbar = 104,
-		scrollBeyondLastColumn = 105,
-		scrollBeyondLastLine = 106,
-		scrollPredominantAxis = 107,
-		selectionClipboard = 108,
-		selectionHighlight = 109,
-		selectOnLineNumbers = 110,
-		showFoldingControls = 111,
-		showUnused = 112,
-		snippetSuggestions = 113,
-		smartSelect = 114,
-		smoothScrolling = 115,
-		stickyScroll = 116,
-		stickyTabStops = 117,
-		stopRenderingLineAfter = 118,
-		suggest = 119,
-		suggestFontSize = 120,
-		suggestLineHeight = 121,
-		suggestOnTriggerCharacters = 122,
-		suggestSelection = 123,
-		tabCompletion = 124,
-		tabIndex = 125,
-		unicodeHighlighting = 126,
-		unusualLineTerminators = 127,
-		useShadowDOM = 128,
-		useTabStops = 129,
-		wordBreak = 130,
-		wordSeparators = 131,
-		wordWrap = 132,
-		wordWrapBreakAfterCharacters = 133,
-		wordWrapBreakBeforeCharacters = 134,
-		wordWrapColumn = 135,
-		wordWrapOverride1 = 136,
-		wordWrapOverride2 = 137,
-		wrappingIndent = 138,
-		wrappingStrategy = 139,
-		showDeprecated = 140,
-		inlayHints = 141,
-		editorClassName = 142,
-		pixelRatio = 143,
-		tabFocusMode = 144,
-		layoutInfo = 145,
-		wrappingInfo = 146,
-		defaultColorDecorators = 147,
-		colorDecoratorsActivatedOn = 148,
-		inlineCompletionsAccessibilityVerbose = 149
+		occurrencesHighlight = 81,
+		overviewRulerBorder = 82,
+		overviewRulerLanes = 83,
+		padding = 84,
+		pasteAs = 85,
+		parameterHints = 86,
+		peekWidgetDefaultFocus = 87,
+		definitionLinkOpensInPeek = 88,
+		quickSuggestions = 89,
+		quickSuggestionsDelay = 90,
+		readOnly = 91,
+		readOnlyMessage = 92,
+		renameOnType = 93,
+		renderControlCharacters = 94,
+		renderFinalNewline = 95,
+		renderLineHighlight = 96,
+		renderLineHighlightOnlyWhenFocus = 97,
+		renderValidationDecorations = 98,
+		renderWhitespace = 99,
+		revealHorizontalRightPadding = 100,
+		roundedSelection = 101,
+		rulers = 102,
+		scrollbar = 103,
+		scrollBeyondLastColumn = 104,
+		scrollBeyondLastLine = 105,
+		scrollPredominantAxis = 106,
+		selectionClipboard = 107,
+		selectionHighlight = 108,
+		selectOnLineNumbers = 109,
+		showFoldingControls = 110,
+		showUnused = 111,
+		snippetSuggestions = 112,
+		smartSelect = 113,
+		smoothScrolling = 114,
+		stickyScroll = 115,
+		stickyTabStops = 116,
+		stopRenderingLineAfter = 117,
+		suggest = 118,
+		suggestFontSize = 119,
+		suggestLineHeight = 120,
+		suggestOnTriggerCharacters = 121,
+		suggestSelection = 122,
+		tabCompletion = 123,
+		tabIndex = 124,
+		unicodeHighlighting = 125,
+		unusualLineTerminators = 126,
+		useShadowDOM = 127,
+		useTabStops = 128,
+		wordBreak = 129,
+		wordSeparators = 130,
+		wordWrap = 131,
+		wordWrapBreakAfterCharacters = 132,
+		wordWrapBreakBeforeCharacters = 133,
+		wordWrapColumn = 134,
+		wordWrapOverride1 = 135,
+		wordWrapOverride2 = 136,
+		wrappingIndent = 137,
+		wrappingStrategy = 138,
+		showDeprecated = 139,
+		inlayHints = 140,
+		editorClassName = 141,
+		pixelRatio = 142,
+		tabFocusMode = 143,
+		layoutInfo = 144,
+		wrappingInfo = 145,
+		defaultColorDecorators = 146,
+		colorDecoratorsActivatedOn = 147,
+		inlineCompletionsAccessibilityVerbose = 148
 	}
 
 	export const EditorOptions: {
@@ -4952,8 +4959,7 @@ declare namespace monaco.editor {
 		multiCursorModifier: IEditorOption<EditorOption.multiCursorModifier, 'altKey' | 'metaKey' | 'ctrlKey'>;
 		multiCursorPaste: IEditorOption<EditorOption.multiCursorPaste, 'spread' | 'full'>;
 		multiCursorLimit: IEditorOption<EditorOption.multiCursorLimit, number>;
-		occurrencesHighlight: IEditorOption<EditorOption.occurrencesHighlight, boolean>;
-		multiDocumentOccurrencesHighlight: IEditorOption<EditorOption.multiDocumentOccurrencesHighlight, boolean>;
+		occurrencesHighlight: IEditorOption<EditorOption.occurrencesHighlight, 'off' | 'singleFile' | 'multiFile'>;
 		overviewRulerBorder: IEditorOption<EditorOption.overviewRulerBorder, boolean>;
 		overviewRulerLanes: IEditorOption<EditorOption.overviewRulerLanes, number>;
 		padding: IEditorOption<EditorOption.padding, Readonly<Required<IEditorPaddingOptions>>>;
