@@ -321,15 +321,15 @@
 									"name": "meta.encoding.cpp"
 								},
 								"2": {
-									"name": "punctuation.definition.string.begin.assembly.cpp"
+									"name": "punctuation.definition.string.begin.assembly.cpp literaltype.string.begin.asm.pp.cpp"
 								}
 							},
 							"endCaptures": {
 								"0": {
-									"name": "punctuation.definition.string.end.assembly.cpp"
+									"name": "punctuation.definition.string.end.assembly.cpp literaltype.string.end.asm.pp.cpp"
 								}
 							},
-							"name": "string.quoted.double.cpp",
+							"name": "string.quoted.double.cpp literaltype.string.body.asm.pp.cpp",
 							"contentName": "meta.embedded.assembly",
 							"patterns": [
 								{
@@ -2501,15 +2501,15 @@
 					"end": "(?:(\")|(?<!\\\\)(?:(?=\\n)|(?<=^\\n|[^\\\\]\\n)(?=$)))|(?=(?<!\\\\)\n)",
 					"beginCaptures": {
 						"0": {
-							"name": "punctuation.definition.string.begin.cpp"
+							"name": "punctuation.definition.string.begin.cpp literaltype.string.begin.diagnostic.pp.cpp"
 						}
 					},
 					"endCaptures": {
 						"1": {
-							"name": "punctuation.definition.string.end.cpp"
+							"name": "punctuation.definition.string.end.cpp literaltype.string.end.diagnostic.pp.cpp"
 						}
 					},
-					"name": "string.quoted.double.cpp",
+					"name": "string.quoted.double.cpp literaltype.string.body.diagnostic.pp.cpp",
 					"patterns": [
 						{
 							"include": "source.cpp#line_continuation_character"
@@ -2521,15 +2521,15 @@
 					"end": "(?:(')|(?<!\\\\)(?:(?=\\n)|(?<=^\\n|[^\\\\]\\n)(?=$)))|(?=(?<!\\\\)\n)",
 					"beginCaptures": {
 						"0": {
-							"name": "punctuation.definition.string.begin.cpp"
+							"name": "punctuation.definition.string.begin.cpp literaltype.character.begin.diagnostic.pp.cpp"
 						}
 					},
 					"endCaptures": {
 						"1": {
-							"name": "punctuation.definition.string.end.cpp"
+							"name": "punctuation.definition.string.end.cpp literaltype.character.end.diagnostic.pp.cpp"
 						}
 					},
-					"name": "string.quoted.single.cpp",
+					"name": "string.quoted.single.cpp literaltype.character.body.diagnostic.pp.cpp",
 					"patterns": [
 						{
 							"include": "source.cpp#line_continuation_character"
@@ -6960,7 +6960,7 @@
 					"end": "(\")(?:((?:[a-zA-Z]|(?:\\\\u[0-9a-fA-F]{4}|\\\\U[0-9a-fA-F]{8}))(?:[a-zA-Z0-9_]|(?:\\\\u[0-9a-fA-F]{4}|\\\\U[0-9a-fA-F]{8}))*)|(_(?:[a-zA-Z0-9_]|(?:\\\\u[0-9a-fA-F]{4}|\\\\U[0-9a-fA-F]{8}))*))?|(?=(?<!\\\\)\n)",
 					"beginCaptures": {
 						"0": {
-							"name": "punctuation.definition.string.begin.cpp"
+							"name": "punctuation.definition.string.begin.cpp literaltype.string.begin.literal.pp.cpp"
 						},
 						"1": {
 							"name": "meta.encoding.cpp"
@@ -6968,7 +6968,7 @@
 					},
 					"endCaptures": {
 						"1": {
-							"name": "punctuation.definition.string.end.cpp"
+							"name": "punctuation.definition.string.end.cpp literaltype.string.end.literal.pp.cpp"
 						},
 						"2": {
 							"name": "keyword.other.suffix.literal.user-defined.reserved.string.cpp"
@@ -6977,7 +6977,7 @@
 							"name": "keyword.other.suffix.literal.user-defined.string.cpp"
 						}
 					},
-					"name": "string.quoted.double.cpp",
+					"name": "string.quoted.double.cpp literaltype.string.body.literal.pp.cpp",
 					"patterns": [
 						{
 							"match": "(?:\\\\u[0-9a-fA-F]{4}|\\\\U[0-9a-fA-F]{8})",
@@ -7012,7 +7012,7 @@
 					"end": "(')(?:((?:[a-zA-Z]|(?:\\\\u[0-9a-fA-F]{4}|\\\\U[0-9a-fA-F]{8}))(?:[a-zA-Z0-9_]|(?:\\\\u[0-9a-fA-F]{4}|\\\\U[0-9a-fA-F]{8}))*)|(_(?:[a-zA-Z0-9_]|(?:\\\\u[0-9a-fA-F]{4}|\\\\U[0-9a-fA-F]{8}))*))?|(?=(?<!\\\\)\n)",
 					"beginCaptures": {
 						"0": {
-							"name": "punctuation.definition.string.begin.cpp"
+							"name": "punctuation.definition.string.begin.cpp literaltype.character.begin.literal.pp.cpp"
 						},
 						"1": {
 							"name": "meta.encoding.cpp"
@@ -7020,7 +7020,7 @@
 					},
 					"endCaptures": {
 						"1": {
-							"name": "punctuation.definition.string.end.cpp"
+							"name": "punctuation.definition.string.end.cpp literaltype.character.end.literal.pp.cpp"
 						},
 						"2": {
 							"name": "keyword.other.suffix.literal.user-defined.reserved.character.cpp"
@@ -7029,7 +7029,7 @@
 							"name": "keyword.other.suffix.literal.user-defined.character.cpp"
 						}
 					},
-					"name": "string.quoted.single.cpp",
+					"name": "string.quoted.single.cpp literaltype.character.body.literal.pp.cpp",
 					"patterns": [
 						{
 							"match": "(?:(\\\\x0*[0-9a-fA-F]{2}(?![0-9a-fA-F]))|((?:\\\\x[0-9a-fA-F]*|\\\\x)))",
@@ -7055,7 +7055,7 @@
 					"end": "\\)(?:(?:_r|re)|regex)\\\"|(?=(?<!\\\\)\n)",
 					"beginCaptures": {
 						"0": {
-							"name": "punctuation.definition.string.begin.cpp"
+							"name": "punctuation.definition.string.begin.cpp literaltype.string.begin.regex.pp.cpp"
 						},
 						"1": {
 							"name": "meta.encoding.cpp"
@@ -7063,10 +7063,10 @@
 					},
 					"endCaptures": {
 						"0": {
-							"name": "punctuation.definition.string.end.cpp"
+							"name": "punctuation.definition.string.end.cpp literaltype.string.end.regex.pp.cpp"
 						}
 					},
-					"name": "string.quoted.double.raw.regex.cpp",
+					"name": "string.quoted.double.raw.regex.cpp literaltype.string.body.regex.pp.cpp",
 					"patterns": [
 						{
 							"include": "source.regexp.python"
@@ -7078,7 +7078,7 @@
 					"end": "\\)(?:glsl|GLSL)\\\"|(?=(?<!\\\\)\n)",
 					"beginCaptures": {
 						"0": {
-							"name": "punctuation.definition.string.begin.cpp"
+							"name": "punctuation.definition.string.begin.cpp literaltype.string.begin.glsl.pp.cpp"
 						},
 						"1": {
 							"name": "meta.encoding.cpp"
@@ -7086,10 +7086,10 @@
 					},
 					"endCaptures": {
 						"0": {
-							"name": "punctuation.definition.string.end.cpp"
+							"name": "punctuation.definition.string.end.cpp literaltype.string.end.glsl.pp.cpp"
 						}
 					},
-					"name": "meta.string.quoted.double.raw.glsl.cpp",
+					"name": "meta.string.quoted.double.raw.glsl.cpp literaltype.string.body.glsl.pp.cpp",
 					"patterns": [
 						{
 							"include": "source.glsl"
@@ -7101,7 +7101,7 @@
 					"end": "\\)(?:[pP]?(?:sql|SQL)|d[dm]l)\\\"|(?=(?<!\\\\)\n)",
 					"beginCaptures": {
 						"0": {
-							"name": "punctuation.definition.string.begin.cpp"
+							"name": "punctuation.definition.string.begin.cpp literaltype.string.begin.sql.pp.cpp"
 						},
 						"1": {
 							"name": "meta.encoding.cpp"
@@ -7109,10 +7109,10 @@
 					},
 					"endCaptures": {
 						"0": {
-							"name": "punctuation.definition.string.end.cpp"
+							"name": "punctuation.definition.string.end.cpp literaltype.string.end.sql.pp.cpp"
 						}
 					},
-					"name": "meta.string.quoted.double.raw.sql.cpp",
+					"name": "meta.string.quoted.double.raw.sql.cpp literaltype.string.body.sql.pp.cpp",
 					"patterns": [
 						{
 							"include": "source.sql"
@@ -7123,7 +7123,7 @@
 					"begin": "((?:u|u8|U|L)?R)\"(?:([^ ()\\\\\\t]{0,16})|([^ ()\\\\\\t]*))\\(",
 					"beginCaptures": {
 						"0": {
-							"name": "punctuation.definition.string.begin"
+							"name": "punctuation.definition.string.begin literaltype.string.begin.raw.pp.cpp"
 						},
 						"1": {
 							"name": "meta.encoding"
@@ -7135,7 +7135,7 @@
 					"end": "(\\)\\2(\\3)\")(?:((?:[a-zA-Z]|(?:\\\\u[0-9a-fA-F]{4}|\\\\U[0-9a-fA-F]{8}))(?:[a-zA-Z0-9_]|(?:\\\\u[0-9a-fA-F]{4}|\\\\U[0-9a-fA-F]{8}))*)|(_(?:[a-zA-Z0-9_]|(?:\\\\u[0-9a-fA-F]{4}|\\\\U[0-9a-fA-F]{8}))*))?|(?=(?<!\\\\)\n)",
 					"endCaptures": {
 						"1": {
-							"name": "punctuation.definition.string.end"
+							"name": "punctuation.definition.string.end literaltype.string.end.raw.pp.cpp"
 						},
 						"2": {
 							"name": "invalid.illegal.delimiter-too-long"
@@ -7147,7 +7147,7 @@
 							"name": "keyword.other.suffix.literal.user-defined.string.cpp"
 						}
 					},
-					"name": "string.quoted.double.raw"
+					"name": "string.quoted.double.raw literaltype.string.body.raw.pp.cpp"
 				}
 			]
 		},
