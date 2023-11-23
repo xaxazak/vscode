@@ -4650,6 +4650,10 @@ declare namespace monaco.editor {
 		 * Show snippet-suggestions.
 		 */
 		showSnippets?: boolean;
+		/**
+		 * Minimum characters typed before generating suggestions.
+		 */
+		minimumProvokingCharacters?: number;
 	}
 
 	export interface ISmartSelectOptions {
