@@ -52,6 +52,7 @@ import { ICommandService } from 'vs/platform/commands/common/commands';
 import { Schemas } from 'vs/base/common/network';
 import { extUriIgnorePathCase } from 'vs/base/common/resources';
 import { ILocalizedString } from 'vs/platform/action/common/action';
+import { mainWindow } from 'vs/base/browser/window';
 
 const $ = dom.$;
 
@@ -733,7 +734,7 @@ class OpenEditorsDragAndDrop implements IListDragAndDrop<OpenEditor | IEditorGro
 			});
 			this.editorGroupService.activateGroup(group);
 		} else {
-			this.dropHandler.handleDrop(originalEvent, window, () => group, () => group.focus(), { index });
+			this.dropHandler.handleDrop(originalEvent, mainWindow, () => group, () => group.focus(), { index });
 		}
 	}
 
@@ -785,7 +786,7 @@ registerAction2(class extends Action2 {
 });
 
 MenuRegistry.appendMenuItem(MenuId.MenubarLayoutMenu, {
-	group: '4_flip',
+	group: '5_flip',
 	command: {
 		id: toggleEditorGroupLayoutId,
 		title: {
