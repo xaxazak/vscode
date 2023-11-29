@@ -2725,6 +2725,12 @@ class WrappingStrategy extends BaseEditorOption<EditorOption.wrappingStrategy, '
 
 //#region lightbulb
 
+export enum ShowAiIconMode {
+	Off = 'off',
+	OnCode = 'onCode',
+	On = 'on'
+}
+
 /**
  * Configuration options for editor lightbulb
  */
@@ -2734,6 +2740,13 @@ export interface IEditorLightbulbOptions {
 	 * Defaults to true.
 	 */
 	enabled?: boolean;
+
+	experimental?: {
+		/**
+		 * Highlight AI code actions with AI icon
+		 */
+		showAiIcon?: ShowAiIconMode;
+	};
 }
 
 /**
@@ -2744,7 +2757,7 @@ export type EditorLightbulbOptions = Readonly<Required<IEditorLightbulbOptions>>
 class EditorLightbulb extends BaseEditorOption<EditorOption.lightbulb, IEditorLightbulbOptions, EditorLightbulbOptions> {
 
 	constructor() {
-		const defaults: EditorLightbulbOptions = { enabled: true };
+		const defaults: EditorLightbulbOptions = { enabled: true, experimental: { showAiIcon: ShowAiIconMode.Off } };
 		super(
 			EditorOption.lightbulb, 'lightbulb', defaults,
 			{
@@ -2752,6 +2765,17 @@ class EditorLightbulb extends BaseEditorOption<EditorOption.lightbulb, IEditorLi
 					type: 'boolean',
 					default: defaults.enabled,
 					description: nls.localize('codeActions', "Enables the Code Action lightbulb in the editor.")
+				},
+				'editor.lightbulb.experimental.showAiIcon': {
+					type: 'string',
+					enum: [ShowAiIconMode.Off, ShowAiIconMode.OnCode, ShowAiIconMode.On],
+					default: defaults.experimental.showAiIcon,
+					enumDescriptions: [
+						nls.localize('editor.lightbulb.showAiIcon.off', 'Don not show the AI icon.'),
+						nls.localize('editor.lightbulb.showAiIcon.onCode', 'Show an AI icon when the code action menu contains an AI action, but only on code.'),
+						nls.localize('editor.lightbulb.showAiIcon.on', 'Show an AI icon when the code action menu contains an AI action, on code and empty lines.'),
+					],
+					description: nls.localize('showAiIcons', "Show an AI icon along with the lightbulb when the code action menu contains an AI action.")
 				},
 			}
 		);
@@ -2763,7 +2787,10 @@ class EditorLightbulb extends BaseEditorOption<EditorOption.lightbulb, IEditorLi
 		}
 		const input = _input as IEditorLightbulbOptions;
 		return {
-			enabled: boolean(input.enabled, this.defaultValue.enabled)
+			enabled: boolean(input.enabled, this.defaultValue.enabled),
+			experimental: {
+				showAiIcon: stringSet(input.experimental?.showAiIcon, this.defaultValue.experimental?.showAiIcon, [ShowAiIconMode.Off, ShowAiIconMode.OnCode, ShowAiIconMode.On])
+			}
 		};
 	}
 }

@@ -792,6 +792,12 @@ export enum SelectionDirection {
 	RTL = 1
 }
 
+export enum ShowAiIconMode {
+	Off = 'off',
+	OnCode = 'onCode',
+	On = 'on'
+}
+
 export enum SignatureHelpTriggerKind {
 	Invoke = 1,
 	TriggerCharacter = 2,
