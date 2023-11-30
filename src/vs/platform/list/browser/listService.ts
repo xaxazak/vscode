@@ -1484,7 +1484,8 @@ configurationRegistry.registerConfiguration({
 		},
 		[treeStickyScrollMaxElements]: {
 			type: 'number',
-			default: 5,
+			minimum: 1,
+			default: 7,
 			markdownDescription: localize('sticky scroll maximum items', "Controls the number of sticky elements displayed in the tree when `#workbench.tree.enableStickyScroll#` is enabled."),
 		},
 		[typeNavigationModeSettingKey]: {
